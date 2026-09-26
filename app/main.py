@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+from app.api.routes_rfp import router as rfp_router
+
 
 app = FastAPI(
     title="Autonomous Tender/RFP Intelligence & Bid/No-Bid Decision Engine",
@@ -9,6 +11,9 @@ app = FastAPI(
     ),
     version="0.1.0",
 )
+
+
+app.include_router(rfp_router)
 
 
 @app.get("/")
