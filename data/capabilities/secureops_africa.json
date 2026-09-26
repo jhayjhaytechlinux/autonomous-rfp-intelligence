@@ -1,0 +1,141 @@
+{
+  "company_name": "SecureOps Africa",
+  "company_type": "Cybersecurity Services Provider",
+  "description": "SecureOps Africa provides cybersecurity operations, security monitoring, incident detection and response, network security, security consulting, and cybersecurity training services.",
+  "capabilities": [
+    {
+      "capability_id": "CAP-001",
+      "name": "Security Information and Event Management",
+      "description": "SIEM implementation, configuration, administration, and security event analysis.",
+      "categories": [
+        "technical",
+        "security_monitoring"
+      ],
+      "evidence": "SecureOps Africa provides SIEM implementation and security event analysis services."
+    },
+    {
+      "capability_id": "CAP-002",
+      "name": "Real-Time Security Event Monitoring",
+      "description": "Continuous monitoring and analysis of security events across enterprise environments.",
+      "categories": [
+        "technical",
+        "security_monitoring"
+      ],
+      "evidence": "SecureOps Africa provides continuous security event monitoring services."
+    },
+    {
+      "capability_id": "CAP-003",
+      "name": "Incident Detection and Alerting",
+      "description": "Detection of suspicious security activity and generation of alerts for investigation.",
+      "categories": [
+        "technical",
+        "incident_response"
+      ],
+      "evidence": "SecureOps Africa provides security incident detection and alerting."
+    },
+    {
+      "capability_id": "CAP-004",
+      "name": "Network Traffic Analysis",
+      "description": "Analysis of network traffic to identify suspicious activity, anomalies, and potential threats.",
+      "categories": [
+        "technical",
+        "network_security"
+      ],
+      "evidence": "SecureOps Africa provides network security monitoring and traffic analysis."
+    },
+    {
+      "capability_id": "CAP-005",
+      "name": "Role-Based Access Control",
+      "description": "Implementation and administration of role-based access controls for security platforms and enterprise environments.",
+      "categories": [
+        "technical",
+        "identity_and_access"
+      ],
+      "evidence": "SecureOps Africa supports RBAC implementation and access-control configuration."
+    },
+    {
+      "capability_id": "CAP-006",
+      "name": "Security Audit Logging",
+      "description": "Collection, monitoring, and review of security audit logs.",
+      "categories": [
+        "technical",
+        "security_monitoring"
+      ],
+      "evidence": "SecureOps Africa provides security logging and audit monitoring services."
+    },
+    {
+      "capability_id": "CAP-007",
+      "name": "Security Reporting and Dashboards",
+      "description": "Security reporting, monitoring dashboards, incident summaries, and operational security metrics.",
+      "categories": [
+        "technical",
+        "reporting"
+      ],
+      "evidence": "SecureOps Africa provides security reporting and dashboard development."
+    },
+    {
+      "capability_id": "CAP-008",
+      "name": "Cybersecurity Experience",
+      "description": "Cybersecurity service delivery covering security operations, monitoring, incident response, and security consulting.",
+      "categories": [
+        "experience"
+      ],
+      "evidence": "SecureOps Africa has documented cybersecurity service delivery experience."
+    },
+    {
+      "capability_id": "CAP-009",
+      "name": "Security Monitoring Implementation",
+      "description": "Implementation and configuration of enterprise security monitoring solutions.",
+      "categories": [
+        "experience",
+        "implementation"
+      ],
+      "evidence": "SecureOps Africa provides security monitoring solution implementation services."
+    },
+    {
+      "capability_id": "CAP-010",
+      "name": "Qualified Cybersecurity Personnel",
+      "description": "Cybersecurity personnel capable of performing security monitoring, analysis, incident response, and security engineering activities.",
+      "categories": [
+        "personnel"
+      ],
+      "evidence": "SecureOps Africa maintains qualified cybersecurity personnel for security operations and engineering activities."
+    },
+    {
+      "capability_id": "CAP-011",
+      "name": "Enterprise Client Experience",
+      "description": "Experience delivering cybersecurity services in enterprise environments.",
+      "categories": [
+        "experience"
+      ],
+      "evidence": "SecureOps Africa has documented experience delivering cybersecurity services to enterprise environments."
+    },
+    {
+      "capability_id": "CAP-012",
+      "name": "Security Consulting",
+      "description": "Cybersecurity assessments, security architecture guidance, risk analysis, and security advisory services.",
+      "categories": [
+        "consulting"
+      ],
+      "evidence": "SecureOps Africa provides cybersecurity consulting and security advisory services."
+    },
+    {
+      "capability_id": "CAP-013",
+      "name": "Cybersecurity Training",
+      "description": "Cybersecurity awareness, technical security training, and security operations training.",
+      "categories": [
+        "training"
+      ],
+      "evidence": "SecureOps Africa provides cybersecurity training and security awareness services."
+    },
+    {
+      "capability_id": "CAP-014",
+      "name": "Incident Response",
+      "description": "Investigation, containment, and response to cybersecurity incidents.",
+      "categories": [
+        "incident_response"
+      ],
+      "evidence": "SecureOps Africa provides cybersecurity incident response services."
+    }
+  ]
+}
