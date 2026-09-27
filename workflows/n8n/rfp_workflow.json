@@ -1,0 +1,1329 @@
+{
+  "name": "Autonomous RFP Intelligence & Bid Decision",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        0
+      ],
+      "id": "9ab8be39-9523-48be-949a-c29767edf68a",
+      "name": "Start RFP Analysis"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/api/analysis/analyze",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "rfp_file",
+              "inputDataFieldName": "rfp_file"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "capability_file",
+              "inputDataFieldName": "capability_file"
+            },
+            {
+              "name": "resource_score",
+              "value": "50"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        528,
+        -16
+      ],
+      "id": "9cd3cb34-4d35-496e-b697-0c6500ddc65f",
+      "name": "Submit RFP for Intelligence Analysis"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/jayjay/projects/autonomous-rfp-intelligence/data/sample_rfps/sample_rfp.pdf",
+        "options": {
+          "dataPropertyName": "rfp_file"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        -128
+      ],
+      "id": "ee78ce12-da84-4f18-8d89-ea7183e768ec",
+      "name": "Load RFP Document"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/jayjay/projects/autonomous-rfp-intelligence/data/capabilities/secureops_africa.json",
+        "options": {
+          "dataPropertyName": "capability_file"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        112,
+        112
+      ],
+      "id": "63ec3a5d-d4e0-4e21-bf47-ee2a5b576534",
+      "name": "Load Company Capability Profile"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        320,
+        -16
+      ],
+      "id": "05f18450-fce2-42f0-8d10-0dd55b3d57a1",
+      "name": "Combine RFP Inputs"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.analysis.decision.decision }}",
+                    "rightValue": "bid",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "3adfb2db-6d36-41a8-9664-453987493f47"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "621edbd5-c490-4fba-88be-1ce457b19967",
+                    "leftValue": "={{ $json.analysis.decision.decision }}",
+                    "rightValue": "executive_review",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "cf85b647-5b59-48ea-a6b3-a189fc3bd882",
+                    "leftValue": "={{ $json.analysis.decision.decision }}",
+                    "rightValue": "no_bid",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        0
+      ],
+      "id": "acaff999-6387-43b1-a3dc-e96e2ebc9e7d",
+      "name": "Evaluate Bid Decision"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dada457a-e0ed-4b87-97db-6c7bd9074fd7",
+              "name": "workflow_status",
+              "value": "EXECUTIVE_REVIEW",
+              "type": "string"
+            },
+            {
+              "id": "9886442f-1a91-40e2-af74-c7c6c4bfcb62",
+              "name": "next_action",
+              "value": "Route RFP for executive review and approval",
+              "type": "string"
+            },
+            {
+              "id": "e2b5c2ae-afae-4203-9895-d35ddc26ded0",
+              "name": "decision",
+              "value": "={{ $json.analysis.decision.decision }}",
+              "type": "string"
+            },
+            {
+              "id": "d2021195-53a4-48b5-8b01-3645a6772957",
+              "name": "overall_score",
+              "value": "={{ $json.analysis.decision.overall_score }}",
+              "type": "number"
+            },
+            {
+              "id": "df41023d-22ff-4d0b-9791-39e6d39c4a28",
+              "name": "rfp_filename",
+              "value": "={{ $json.analysis.rfp.filename }}",
+              "type": "string"
+            },
+            {
+              "id": "3a196ef3-e14c-4e55-abaa-b9b31a728170",
+              "name": "company",
+              "value": "={{ $json.analysis.company.name }}",
+              "type": "string"
+            },
+            {
+              "id": "051a0ec0-099c-413d-9dc4-8d669de574f3",
+              "name": "risk_score",
+              "value": "={{ $json.analysis.decision.risk_score }}",
+              "type": "number"
+            },
+            {
+              "id": "c7bebb54-5b85-41e1-9578-5787bf28b2f9",
+              "name": "compliance_score",
+              "value": "={{ $json.analysis.decision.compliance_score }}",
+              "type": "number"
+            },
+            {
+              "id": "ffaff546-b1a8-44cb-aa01-16b97bdc0e46",
+              "name": "capability_score",
+              "value": "={{ $json.analysis.decision.capability_score }}",
+              "type": "number"
+            },
+            {
+              "id": "0d0ff7c0-7f1d-4e55-98f3-ffcaec1127e1",
+              "name": "experience_score",
+              "value": "={{ $json.analysis.decision.experience_score }}",
+              "type": "number"
+            },
+            {
+              "id": "aabd57af-e9a1-4489-ab78-01f40d92884e",
+              "name": "resource_score",
+              "value": "={{ $json.analysis.decision.resource_score }}",
+              "type": "number"
+            },
+            {
+              "id": "5bd7ab88-a34d-48ee-a897-d33350b7e0fe",
+              "name": "mandatory_gaps",
+              "value": "={{ $json.analysis.decision.mandatory_gaps }}",
+              "type": "array"
+            },
+            {
+              "id": "f2c28bfa-7674-406a-bc8d-6312342abc52",
+              "name": "partial_requirements",
+              "value": "={{ $json.analysis.decision.partial_requirements }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1296,
+        16
+      ],
+      "id": "ca26861a-4085-4e0b-bc79-5aeeee26882a",
+      "name": "EXECUTIVE REVIEW — Management Approval"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6b26b71c-d892-4437-84ad-94933bf450eb",
+              "name": "workflow_status",
+              "value": "BID",
+              "type": "string"
+            },
+            {
+              "id": "01b04d72-2a6d-47b7-91c1-28c4301730e6",
+              "name": "next_action",
+              "value": "Initialize proposal preparation workspace",
+              "type": "string"
+            },
+            {
+              "id": "56e7d965-cebf-4175-bc90-18bc3e7932dd",
+              "name": "decision",
+              "value": "={{ $json.analysis.decision.decision }}",
+              "type": "string"
+            },
+            {
+              "id": "8f004eb8-8e29-419a-850b-cc322f747dcd",
+              "name": "overall_score",
+              "value": "={{ $json.analysis.decision.overall_score }}",
+              "type": "number"
+            },
+            {
+              "id": "7147416d-0e8c-4a0f-b0a1-4b95ebfc03dc",
+              "name": "rfp_filename",
+              "value": "={{ $json.analysis.rfp.filename }}",
+              "type": "string"
+            },
+            {
+              "id": "cc0ef873-f4b4-4def-8779-e22e3875986c",
+              "name": "company",
+              "value": "={{ $json.analysis.company.name }}",
+              "type": "string"
+            },
+            {
+              "id": "27db202c-43f4-4a40-89fa-5c88e202ec3d",
+              "name": "risk_score",
+              "value": "={{ $json.analysis.decision.risk_score }}",
+              "type": "number"
+            },
+            {
+              "id": "90722372-8ef0-4203-80f2-74403f22661c",
+              "name": "compliance_score",
+              "value": "={{ $json.analysis.decision.compliance_score }}",
+              "type": "number"
+            },
+            {
+              "id": "962293f7-ee01-4b9c-b24f-2dea231af218",
+              "name": "capability_score",
+              "value": "={{ $json.analysis.decision.capability_score }}",
+              "type": "number"
+            },
+            {
+              "id": "639d71e1-e1ef-44e2-b6d3-15f454bb16bd",
+              "name": "experience_score",
+              "value": "={{ $json.analysis.decision.experience_score }}",
+              "type": "number"
+            },
+            {
+              "id": "eb1579fd-5472-45b5-9cd8-ccb31ef3f854",
+              "name": "resource_score",
+              "value": "={{ $json.analysis.decision.resource_score }}",
+              "type": "number"
+            },
+            {
+              "id": "517d8bf5-89fd-4537-89b2-97081fa730d4",
+              "name": "mandatory_gaps",
+              "value": "={{ $json.analysis.decision.mandatory_gaps }}",
+              "type": "array"
+            },
+            {
+              "id": "6fa6049b-93b9-4e2e-9f2f-455725ae4114",
+              "name": "partial_requirements",
+              "value": "={{ $json.analysis.decision.partial_requirements }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1200,
+        -112
+      ],
+      "id": "52079381-4ad5-4e2a-8e8e-a33d0e75ce48",
+      "name": "BID - Proposal Preparation"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b385aac7-4a08-4234-9d2d-0ca7afa7f6a3",
+              "name": "workflow_status",
+              "value": "NO_BID",
+              "type": "string"
+            },
+            {
+              "id": "22ceabc7-1488-4d76-8fec-4bf9263ce4cc",
+              "name": "next_action",
+              "value": "Record no-bid decision and close opportunity",
+              "type": "string"
+            },
+            {
+              "id": "3abb8113-85c4-4cd2-8aa2-1879d02ffab9",
+              "name": "decision",
+              "value": "={{ $json.analysis.decision.decision }}",
+              "type": "string"
+            },
+            {
+              "id": "f1e4a175-2fac-4770-9e04-501e50e145e7",
+              "name": "overall_score",
+              "value": "={{ $json.analysis.decision.overall_score }}",
+              "type": "number"
+            },
+            {
+              "id": "e9672021-e922-4bb4-a2cf-30c8f2271ac5",
+              "name": "rfp_filename",
+              "value": "={{ $json.analysis.rfp.filename }}",
+              "type": "string"
+            },
+            {
+              "id": "a9220e09-2928-4138-8d82-1e1f0accc591",
+              "name": "company",
+              "value": "={{ $json.analysis.company.name }}",
+              "type": "string"
+            },
+            {
+              "id": "f65b36ac-60b2-4fd6-a983-26ca7d993366",
+              "name": "risk_score",
+              "value": "={{ $json.analysis.decision.risk_score }}",
+              "type": "number"
+            },
+            {
+              "id": "20c4c4a4-5312-45d3-bef3-a11af27e02a4",
+              "name": "compliance_score",
+              "value": "={{ $json.analysis.decision.compliance_score }}",
+              "type": "number"
+            },
+            {
+              "id": "327b3d6f-e333-400c-9f33-9aea7f9d71f4",
+              "name": "capability_score",
+              "value": "={{ $json.analysis.decision.capability_score }}",
+              "type": "number"
+            },
+            {
+              "id": "8cc465b3-b50d-4187-8aa4-b43f154b51f4",
+              "name": "experience_score",
+              "value": "={{ $json.analysis.decision.experience_score }}",
+              "type": "number"
+            },
+            {
+              "id": "df1a6656-de82-49f8-abd7-f25f753520ae",
+              "name": "resource_score",
+              "value": "={{ $json.analysis.decision.resource_score }}",
+              "type": "number"
+            },
+            {
+              "id": "74421506-8361-4e97-a6f4-a7bbaed1e10f",
+              "name": "mandatory_gaps",
+              "value": "={{ $json.analysis.decision.mandatory_gaps }}",
+              "type": "array"
+            },
+            {
+              "id": "d95fb18d-1aa4-4018-a594-de9f0ba1347b",
+              "name": "partial_requirements",
+              "value": "={{ $json.analysis.decision.partial_requirements }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1216,
+        176
+      ],
+      "id": "36810cfd-9cc4-4473-be52-eff3e988af85",
+      "name": "NO-BID  - Close Opportunity"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9af0a68b-6cf4-4958-9344-a22508b5f37c",
+              "name": "rfp_filename",
+              "value": "={{ $json.analysis.rfp.filename }}",
+              "type": "string"
+            },
+            {
+              "id": "c22bb2ff-6795-4788-a477-74048821efc9",
+              "name": "company",
+              "value": "={{ $json.analysis.company.name }}",
+              "type": "string"
+            },
+            {
+              "id": "bf1d8494-2320-486e-b84f-1a77232ab554",
+              "name": "decision",
+              "value": "={{ $json.analysis.decision.decision }}",
+              "type": "string"
+            },
+            {
+              "id": "7a93d572-0f8c-4bac-ac65-ca125f0aba64",
+              "name": "overall_score",
+              "value": "={{ $json.analysis.decision.overall_score }}",
+              "type": "number"
+            },
+            {
+              "id": "705ec34e-ad20-426b-9100-e572a859b1f6",
+              "name": "compliance_score",
+              "value": "={{ $json.analysis.decision.compliance_score }}",
+              "type": "number"
+            },
+            {
+              "id": "d676d475-5284-441f-8835-e4b3880f7e0f",
+              "name": "experience_score",
+              "value": "={{ $json.analysis.decision.experience_score }}",
+              "type": "number"
+            },
+            {
+              "id": "abea544e-7385-4004-9ebb-ad4ef0d0ce55",
+              "name": "resource_score",
+              "value": "={{ $json.analysis.decision.resource_score }}",
+              "type": "number"
+            },
+            {
+              "id": "573abca4-15ce-46cc-a886-70902903f7ec",
+              "name": "risk_score",
+              "value": "={{ $json.analysis.decision.risk_score }}",
+              "type": "number"
+            },
+            {
+              "id": "caf6883d-15ad-497f-9843-eef93ca19f6f",
+              "name": "mandatory_gaps",
+              "value": "={{ $json.analysis.decision.mandatory_gaps }}",
+              "type": "array"
+            },
+            {
+              "id": "3f016738-2ccb-4d92-9eb7-b39a4e551841",
+              "name": "partial_requirements",
+              "value": "={{ $json.analysis.decision.partial_requirements }}",
+              "type": "array"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        752,
+        -16
+      ],
+      "id": "f5f7f024-2cff-4fde-9e36-2c7a99a8074c",
+      "name": "Prepare Executive Decision Record"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1348e08b-6e27-465c-9ab6-8d088acc2336",
+              "name": "notification_type",
+              "value": "EXECUTIVE_REVIEW",
+              "type": "string"
+            },
+            {
+              "id": "61a18d7b-0da6-4f9c-834b-644565edd32b",
+              "name": "subject",
+              "value": "={{ \"Executive Review Required — \" + $json.rfp_filename }}",
+              "type": "string"
+            },
+            {
+              "id": "a650f352-fade-4d5d-b257-bb6605f19eb0",
+              "name": "company",
+              "value": "={{ $json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "d7c35986-f9a8-4350-a6cc-a90ad64ffd5c",
+              "name": "decision",
+              "value": "={{ $json.decision }}",
+              "type": "string"
+            },
+            {
+              "id": "b109df3b-d781-4470-8d5d-4ff00818b5e2",
+              "name": "overall_score",
+              "value": "={{ $json.overall_score }}",
+              "type": "number"
+            },
+            {
+              "id": "d385f3cc-17c8-41be-8da4-b401ca3af591",
+              "name": "risk_score",
+              "value": "={{ $json.risk_score }}",
+              "type": "number"
+            },
+            {
+              "id": "ebefb9a4-1333-4218-8c02-5e7183f17c50",
+              "name": "mandatory_gaps",
+              "value": "={{ $json.mandatory_gaps }}",
+              "type": "array"
+            },
+            {
+              "id": "2a79fa81-63a2-42d1-bf37-eaf279e26c64",
+              "name": "partial_requirements",
+              "value": "={{ $json.partial_requirements }}",
+              "type": "array"
+            },
+            {
+              "id": "b092256e-2f5c-4228-98ed-a29fdd5f3a9d",
+              "name": "message",
+              "value": "={{ \n\"Executive review required for \" \n+ $json.rfp_filename \n+ \". Company: \" \n+ $json.company \n+ \". Decision: \" \n+ $json.decision \n+ \". Overall score: \" \n+ $json.overall_score \n+ \". Compliance score: \" \n+ $json.compliance_score \n+ \". Risk score: \" \n+ $json.risk_score \n+ \". Mandatory gaps: \" \n+ $json.mandatory_gaps.join(\", \") \n+ \". Partial requirements: \" \n+ $json.partial_requirements.join(\", \") \n+ \". Next action: \" \n+ $json.next_action \n}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1520,
+        16
+      ],
+      "id": "4b1e9549-48e1-4922-965c-3baa56a85de9",
+      "name": "Notify Executive Reviewer"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0d055cb9-d5e5-48f0-967f-bc068017a72a",
+              "name": "notification_type",
+              "value": "BID",
+              "type": "string"
+            },
+            {
+              "id": "a7a3490e-0684-4848-8ebb-bda77eee001c",
+              "name": "subject",
+              "value": "={{ \"Proposal Preparation Required — \" + $json.rfp_filename }}",
+              "type": "string"
+            },
+            {
+              "id": "bf150469-8f12-4730-9c88-9d64c9f596c4",
+              "name": "company",
+              "value": "={{ $json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "10f03aab-8a49-49cc-b85f-3be9d95c6782",
+              "name": "decision",
+              "value": "={{ $json.decision }}",
+              "type": "string"
+            },
+            {
+              "id": "103a3745-e0f5-4e33-bcf6-201ea33c8b78",
+              "name": "overall_score",
+              "value": "={{ $json.overall_score }}",
+              "type": "number"
+            },
+            {
+              "id": "e82241bb-f465-4ff6-8e45-30f8dd45442b",
+              "name": "compliance_score",
+              "value": "={{ $json.compliance_score }}",
+              "type": "number"
+            },
+            {
+              "id": "b444844f-923b-40ff-a46a-9017c91569d1",
+              "name": "capability_score",
+              "value": "={{ $json.capability_score }}",
+              "type": "number"
+            },
+            {
+              "id": "1a8166fc-542c-4c11-9366-875f05082835",
+              "name": "experience_score",
+              "value": "={{ $json.experience_score }}",
+              "type": "number"
+            },
+            {
+              "id": "0feb5ffa-477f-4a1e-b8d7-6df576fb8fc3",
+              "name": "resource_score",
+              "value": "={{ $json.resource_score }}",
+              "type": "number"
+            },
+            {
+              "id": "151e3803-fffa-4718-87a8-6a7e135f8057",
+              "name": "risk_score",
+              "value": "={{ $json.risk_score }}",
+              "type": "number"
+            },
+            {
+              "id": "47c9ac35-b294-4d8e-942e-c6c5badc9e97",
+              "name": "mandatory_gaps",
+              "value": "={{ $json.mandatory_gaps }}",
+              "type": "array"
+            },
+            {
+              "id": "f68e4660-b3be-4e73-b77d-e11ea4d472ad",
+              "name": "partial_requirements",
+              "value": "={{ $json.partial_requirements }}",
+              "type": "array"
+            },
+            {
+              "id": "0c44168a-39b2-4625-bcf3-4edfe1d3aa77",
+              "name": "next_action",
+              "value": "={{ $json.next_action }}",
+              "type": "string"
+            },
+            {
+              "id": "c7fcfd19-f378-409f-be0a-61abed3675ae",
+              "name": "message",
+              "value": "={{ \n\"Proposal preparation required for \" \n+ $json.rfp_filename \n+ \". Company: \" \n+ $json.company \n+ \". Decision: \" \n+ $json.decision \n+ \". Overall score: \" \n+ $json.overall_score \n+ \". Compliance score: \" \n+ $json.compliance_score \n+ \". Capability score: \" \n+ $json.capability_score \n+ \". Experience score: \" \n+ $json.experience_score \n+ \". Resource score: \" \n+ $json.resource_score \n+ \". Risk score: \" \n+ $json.risk_score \n+ \". Next action: \" \n+ $json.next_action \n}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1424,
+        -112
+      ],
+      "id": "449ffd7c-4fbd-46a8-90fe-58cfc95fb9b4",
+      "name": "Notify Proposal Team"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d722e9a5-1ea1-437d-b99e-28c8cb9f02f6",
+              "name": "notification_type",
+              "value": "NO_BID",
+              "type": "string"
+            },
+            {
+              "id": "8e65f8aa-0d12-4505-8bed-5abde39ee2de",
+              "name": "subject",
+              "value": "={{ \"No-Bid Decision — \" + $json.rfp_filename }}",
+              "type": "string"
+            },
+            {
+              "id": "8d56c9c7-5dc4-491d-8af5-df9ffafe74c0",
+              "name": "company",
+              "value": "={{ $json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "0b0f2f75-f3c4-4b16-8630-001ef979dd85",
+              "name": "decision",
+              "value": "={{ $json.decision }}",
+              "type": "string"
+            },
+            {
+              "id": "823378db-feeb-45cc-b2a1-34bed9fe4918",
+              "name": "overall_score",
+              "value": "={{ $json.overall_score }}",
+              "type": "number"
+            },
+            {
+              "id": "513eae38-3f7a-4143-af57-80514a6a0570",
+              "name": "risk_score",
+              "value": "={{ $json.risk_score }}",
+              "type": "number"
+            },
+            {
+              "id": "6c7a9e01-8a1d-494b-9552-5b561821a1d4",
+              "name": "mandatory_gaps",
+              "value": "={{ $json.mandatory_gaps }}",
+              "type": "array"
+            },
+            {
+              "id": "4221ddd4-177d-4579-817e-4af3183a1d1f",
+              "name": "partial_requirements",
+              "value": "={{ $json.partial_requirements }}",
+              "type": "array"
+            },
+            {
+              "id": "da804810-5bf8-46db-8a05-7f58fc71da8c",
+              "name": "message",
+              "value": "={{ \"No-bid decision recorded for \" + $json.rfp_filename + \". Company: \" + $json.company + \". Decision: \" + $json.decision + \". Overall score: \" + $json.overall_score + \". Risk score: \" + $json.risk_score + \". Mandatory gaps: \" + $json.mandatory_gaps.join(\", \") + \". Partial requirements: \" + $json.partial_requirements.join(\", \") + \". Next action: Close opportunity and record the decision.\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1440,
+        176
+      ],
+      "id": "6328adea-adcc-47f9-9a0c-38d269e7e269",
+      "name": "Notify Management - No-Bid Decision"
+    }
+  ],
+  "pinData": {
+    "Prepare Executive Decision Record": [
+      {
+        "json": {
+          "status": "success",
+          "message": "RFP analysis completed successfully.",
+          "rfp_filename": "sample_rfp.pdf",
+          "capability_filename": "secureops_africa.json",
+          "resource_score": 50,
+          "analysis": {
+            "rfp": {
+              "filename": "sample_rfp.pdf",
+              "file_type": "pdf",
+              "page_count": 1,
+              "character_count": 1071
+            },
+            "company": {
+              "name": "SecureOps Africa",
+              "type": "Cybersecurity Services Provider"
+            },
+            "requirements": {
+              "total": 16,
+              "items": [
+                {
+                  "requirement_id": "REQ-001",
+                  "category": "technical",
+                  "description": "The solution must provide Security Information and Event Management (SIEM) capabilities.",
+                  "mandatory": true,
+                  "source_section": "2. TECHNICAL REQUIREMENTS",
+                  "evidence": "The proposed solution must provide: - Security Information and Event Management (SIEM)"
+                },
+                {
+                  "requirement_id": "REQ-002",
+                  "category": "technical",
+                  "description": "The solution must provide real-time security event monitoring.",
+                  "mandatory": true,
+                  "source_section": "2. TECHNICAL REQUIREMENTS",
+                  "evidence": "The proposed solution must provide: - Real-time security event monitoring"
+                },
+                {
+                  "requirement_id": "REQ-003",
+                  "category": "technical",
+                  "description": "The solution must provide incident detection and alerting.",
+                  "mandatory": true,
+                  "source_section": "2. TECHNICAL REQUIREMENTS",
+                  "evidence": "The proposed solution must provide: - Incident detection and alerting"
+                },
+                {
+                  "requirement_id": "REQ-004",
+                  "category": "technical",
+                  "description": "The solution must provide network traffic analysis.",
+                  "mandatory": true,
+                  "source_section": "2. TECHNICAL REQUIREMENTS",
+                  "evidence": "The proposed solution must provide: - Network traffic analysis"
+                },
+                {
+                  "requirement_id": "REQ-005",
+                  "category": "technical",
+                  "description": "The solution must provide role-based access control.",
+                  "mandatory": true,
+                  "source_section": "2. TECHNICAL REQUIREMENTS",
+                  "evidence": "The proposed solution must provide: - Role-based access control"
+                },
+                {
+                  "requirement_id": "REQ-006",
+                  "category": "technical",
+                  "description": "The solution must provide audit logging.",
+                  "mandatory": true,
+                  "source_section": "2. TECHNICAL REQUIREMENTS",
+                  "evidence": "The proposed solution must provide: - Audit logging"
+                },
+                {
+                  "requirement_id": "REQ-007",
+                  "category": "technical",
+                  "description": "The solution must provide security reporting and dashboards.",
+                  "mandatory": true,
+                  "source_section": "2. TECHNICAL REQUIREMENTS",
+                  "evidence": "The proposed solution must provide: - Security reporting and dashboards"
+                },
+                {
+                  "requirement_id": "REQ-008",
+                  "category": "experience",
+                  "description": "The bidder must demonstrate at least three years of cybersecurity experience.",
+                  "mandatory": true,
+                  "source_section": "3. EXPERIENCE REQUIREMENTS",
+                  "evidence": "The bidder must demonstrate: - At least three years of cybersecurity experience"
+                },
+                {
+                  "requirement_id": "REQ-009",
+                  "category": "experience",
+                  "description": "The bidder must demonstrate experience implementing security monitoring solutions.",
+                  "mandatory": true,
+                  "source_section": "3. EXPERIENCE REQUIREMENTS",
+                  "evidence": "The bidder must demonstrate: - Experience implementing security monitoring solutions"
+                },
+                {
+                  "requirement_id": "REQ-010",
+                  "category": "personnel",
+                  "description": "The bidder must provide qualified cybersecurity personnel.",
+                  "mandatory": true,
+                  "source_section": "3. EXPERIENCE REQUIREMENTS",
+                  "evidence": "The bidder must demonstrate: - Qualified cybersecurity personnel"
+                },
+                {
+                  "requirement_id": "REQ-011",
+                  "category": "experience",
+                  "description": "The bidder must demonstrate previous experience with enterprise clients.",
+                  "mandatory": true,
+                  "source_section": "3. EXPERIENCE REQUIREMENTS",
+                  "evidence": "The bidder must demonstrate: - Previous experience with enterprise clients"
+                },
+                {
+                  "requirement_id": "REQ-012",
+                  "category": "commercial",
+                  "description": "The proposal must include detailed pricing.",
+                  "mandatory": true,
+                  "source_section": "4. COMMERCIAL REQUIREMENTS",
+                  "evidence": "The proposal must include: - Detailed pricing"
+                },
+                {
+                  "requirement_id": "REQ-013",
+                  "category": "commercial",
+                  "description": "The proposal must include implementation costs.",
+                  "mandatory": true,
+                  "source_section": "4. COMMERCIAL REQUIREMENTS",
+                  "evidence": "The proposal must include: - Implementation costs"
+                },
+                {
+                  "requirement_id": "REQ-014",
+                  "category": "commercial",
+                  "description": "The proposal must include annual maintenance costs.",
+                  "mandatory": true,
+                  "source_section": "4. COMMERCIAL REQUIREMENTS",
+                  "evidence": "The proposal must include: - Annual maintenance costs"
+                },
+                {
+                  "requirement_id": "REQ-015",
+                  "category": "commercial",
+                  "description": "The proposal must include training costs.",
+                  "mandatory": true,
+                  "source_section": "4. COMMERCIAL REQUIREMENTS",
+                  "evidence": "The proposal must include: - Training costs"
+                },
+                {
+                  "requirement_id": "REQ-016",
+                  "category": "submission",
+                  "description": "The complete proposal must be submitted before the stated submission deadline.",
+                  "mandatory": true,
+                  "source_section": "5. SUBMISSION",
+                  "evidence": "The complete proposal must be submitted before the stated submission deadline."
+                }
+              ]
+            },
+            "compliance": {
+              "company_name": "SecureOps Africa",
+              "total_requirements": 16,
+              "compliant_count": 10,
+              "partial_count": 1,
+              "gap_count": 5,
+              "unknown_count": 0,
+              "results": [
+                {
+                  "requirement_id": "REQ-001",
+                  "status": "compliant",
+                  "matched_capability_ids": [
+                    "CAP-001"
+                  ],
+                  "evidence": [
+                    "SecureOps Africa provides SIEM implementation and security event analysis services."
+                  ],
+                  "rationale": "Matched 1 compatible documented company capability/capabilities with sufficient supporting evidence."
+                },
+                {
+                  "requirement_id": "REQ-002",
+                  "status": "compliant",
+                  "matched_capability_ids": [
+                    "CAP-002",
+                    "CAP-004"
+                  ],
+                  "evidence": [
+                    "SecureOps Africa provides continuous security event monitoring services.",
+                    "SecureOps Africa provides network security monitoring and traffic analysis."
+                  ],
+                  "rationale": "Matched 2 compatible documented company capability/capabilities with sufficient supporting evidence."
+                },
+                {
+                  "requirement_id": "REQ-003",
+                  "status": "compliant",
+                  "matched_capability_ids": [
+                    "CAP-003"
+                  ],
+                  "evidence": [
+                    "SecureOps Africa provides security incident detection and alerting."
+                  ],
+                  "rationale": "Matched 1 compatible documented company capability/capabilities with sufficient supporting evidence."
+                },
+                {
+                  "requirement_id": "REQ-004",
+                  "status": "compliant",
+                  "matched_capability_ids": [
+                    "CAP-004"
+                  ],
+                  "evidence": [
+                    "SecureOps Africa provides network security monitoring and traffic analysis."
+                  ],
+                  "rationale": "Matched 1 compatible documented company capability/capabilities with sufficient supporting evidence."
+                },
+                {
+                  "requirement_id": "REQ-005",
+                  "status": "compliant",
+                  "matched_capability_ids": [
+                    "CAP-005"
+                  ],
+                  "evidence": [
+                    "SecureOps Africa supports RBAC implementation and access-control configuration."
+                  ],
+                  "rationale": "Matched 1 compatible documented company capability/capabilities with sufficient supporting evidence."
+                },
+                {
+                  "requirement_id": "REQ-006",
+                  "status": "compliant",
+                  "matched_capability_ids": [
+                    "CAP-006"
+                  ],
+                  "evidence": [
+                    "SecureOps Africa provides security logging and audit monitoring services."
+                  ],
+                  "rationale": "Matched 1 compatible documented company capability/capabilities with sufficient supporting evidence."
+                },
+                {
+                  "requirement_id": "REQ-007",
+                  "status": "compliant",
+                  "matched_capability_ids": [
+                    "CAP-007"
+                  ],
+                  "evidence": [
+                    "SecureOps Africa provides security reporting and dashboard development."
+                  ],
+                  "rationale": "Matched 1 compatible documented company capability/capabilities with sufficient supporting evidence."
+                },
+                {
+                  "requirement_id": "REQ-008",
+                  "status": "partial",
+                  "matched_capability_ids": [
+                    "CAP-008",
+                    "CAP-011"
+                  ],
+                  "evidence": [
+                    "SecureOps Africa has documented cybersecurity service delivery experience.",
+                    "SecureOps Africa has documented experience delivering cybersecurity services to enterprise environments."
+                  ],
+                  "rationale": "Relevant company capability was identified, but the available evidence does not fully establish all conditions of the requirement."
+                },
+                {
+                  "requirement_id": "REQ-009",
+                  "status": "compliant",
+                  "matched_capability_ids": [
+                    "CAP-009"
+                  ],
+                  "evidence": [
+                    "SecureOps Africa provides security monitoring solution implementation services."
+                  ],
+                  "rationale": "Matched 1 compatible documented company capability/capabilities with sufficient supporting evidence."
+                },
+                {
+                  "requirement_id": "REQ-010",
+                  "status": "compliant",
+                  "matched_capability_ids": [
+                    "CAP-010"
+                  ],
+                  "evidence": [
+                    "SecureOps Africa maintains qualified cybersecurity personnel for security operations and engineering activities."
+                  ],
+                  "rationale": "Matched 1 compatible documented company capability/capabilities with sufficient supporting evidence."
+                },
+                {
+                  "requirement_id": "REQ-011",
+                  "status": "compliant",
+                  "matched_capability_ids": [
+                    "CAP-011"
+                  ],
+                  "evidence": [
+                    "SecureOps Africa has documented experience delivering cybersecurity services to enterprise environments."
+                  ],
+                  "rationale": "Matched 1 compatible documented company capability/capabilities with sufficient supporting evidence."
+                },
+                {
+                  "requirement_id": "REQ-012",
+                  "status": "gap",
+                  "matched_capability_ids": [],
+                  "evidence": [],
+                  "rationale": "No documented company capability was found to support this mandatory requirement."
+                },
+                {
+                  "requirement_id": "REQ-013",
+                  "status": "gap",
+                  "matched_capability_ids": [],
+                  "evidence": [],
+                  "rationale": "No documented company capability was found to support this mandatory requirement."
+                },
+                {
+                  "requirement_id": "REQ-014",
+                  "status": "gap",
+                  "matched_capability_ids": [],
+                  "evidence": [],
+                  "rationale": "No documented company capability was found to support this mandatory requirement."
+                },
+                {
+                  "requirement_id": "REQ-015",
+                  "status": "gap",
+                  "matched_capability_ids": [],
+                  "evidence": [],
+                  "rationale": "No documented company capability was found to support this mandatory requirement."
+                },
+                {
+                  "requirement_id": "REQ-016",
+                  "status": "gap",
+                  "matched_capability_ids": [],
+                  "evidence": [],
+                  "rationale": "No documented company capability was found to support this mandatory requirement."
+                }
+              ]
+            },
+            "decision": {
+              "decision": "executive_review",
+              "overall_score": 62.79,
+              "compliance_score": 65.62,
+              "capability_score": 68.75,
+              "experience_score": 83.33,
+              "resource_score": 50,
+              "risk_score": 17.5,
+              "mandatory_gaps": [
+                "REQ-012",
+                "REQ-013",
+                "REQ-014",
+                "REQ-015",
+                "REQ-016"
+              ],
+              "partial_requirements": [
+                "REQ-008"
+              ],
+              "factors": [
+                {
+                  "name": "Compliance",
+                  "score": 65.625,
+                  "weight": 0.3,
+                  "rationale": "10 compliant, 1 partial, 5 gaps, and 0 unknown requirements out of 16."
+                },
+                {
+                  "name": "Capability Fit",
+                  "score": 68.75,
+                  "weight": 0.25,
+                  "rationale": "Measures the proportion of requirements supported by documented company capabilities."
+                },
+                {
+                  "name": "Experience Fit",
+                  "score": 83.33333333333333,
+                  "weight": 0.2,
+                  "rationale": "Measures evidence available for experience-related requirements."
+                },
+                {
+                  "name": "Resource Availability",
+                  "score": 50,
+                  "weight": 0.15,
+                  "rationale": "Current resource availability input. This will later be calculated from team bandwidth data."
+                },
+                {
+                  "name": "Risk",
+                  "score": 17.5,
+                  "weight": 0.1,
+                  "rationale": "Higher scores indicate lower compliance-related risk from gaps and partial requirements."
+                }
+              ],
+              "rationale": "The calculated decision is EXECUTIVE_REVIEW with an overall score of 62.79/100. The compliance assessment identified 5 gaps and 1 partial requirements."
+            }
+          },
+          "company": "SecureOps Africa",
+          "decision": "executive_review",
+          "overall_score": 62.79,
+          "compliance_score": 65.62,
+          "experience_score": 83.33,
+          "risk_score": 17.5,
+          "mandatory_gaps": [
+            "REQ-012",
+            "REQ-013",
+            "REQ-014",
+            "REQ-015",
+            "REQ-016"
+          ],
+          "partial_requirements": [
+            "REQ-008"
+          ]
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Start RFP Analysis": {
+      "main": [
+        [
+          {
+            "node": "Load RFP Document",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Load Company Capability Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load RFP Document": {
+      "main": [
+        [
+          {
+            "node": "Combine RFP Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine RFP Inputs": {
+      "main": [
+        [
+          {
+            "node": "Submit RFP for Intelligence Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Company Capability Profile": {
+      "main": [
+        [
+          {
+            "node": "Combine RFP Inputs",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Submit RFP for Intelligence Analysis": {
+      "main": [
+        [
+          {
+            "node": "Prepare Executive Decision Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Bid Decision": {
+      "main": [
+        [
+          {
+            "node": "BID - Proposal Preparation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "EXECUTIVE REVIEW — Management Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NO-BID  - Close Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Executive Decision Record": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Bid Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EXECUTIVE REVIEW — Management Approval": {
+      "main": [
+        [
+          {
+            "node": "Notify Executive Reviewer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BID - Proposal Preparation": {
+      "main": [
+        [
+          {
+            "node": "Notify Proposal Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NO-BID  - Close Opportunity": {
+      "main": [
+        [
+          {
+            "node": "Notify Management - No-Bid Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c6d52d62-c22f-4b95-86c9-d259ccf99d01",
+  "meta": {
+    "instanceId": "daaa0cd2fceb293e2c90739661a41750b4d2fedd1a625d3bc0ebfd53f52292b0"
+  },
+  "nodeGroups": [],
+  "id": "kXGPsQ8KbPbuzYrK",
+  "tags": []
+}
