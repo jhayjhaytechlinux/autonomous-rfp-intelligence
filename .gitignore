@@ -43,6 +43,7 @@ logs/
 dist/
 build/
 *.egg-info/
+proposal_workspaces/
 
 # Jupyter
 .ipynb_checkpoints/
