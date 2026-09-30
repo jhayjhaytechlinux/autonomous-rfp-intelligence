@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.routes_analysis import router as analysis_router
+from app.api.routes_proposals import router as proposals_router
 from app.api.routes_rfp import router as rfp_router
 
 
@@ -16,6 +17,7 @@ app = FastAPI(
 
 app.include_router(rfp_router)
 app.include_router(analysis_router)
+app.include_router(proposals_router)
 
 
 @app.get("/")

@@ -5,6 +5,9 @@ import pymupdf
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.proposals.workspace_initializer import (
+    ProposalWorkspaceInitializer,
+)
 
 
 client = TestClient(app)
@@ -236,17 +239,11 @@ def test_extract_requirements_endpoint():
     data = response.json()
 
     assert data["filename"] == "sample_rfp.pdf"
-
     assert data["file_type"] == "pdf"
-
     assert data["page_count"] == 1
-
     assert data["character_count"] > 0
-
     assert data["total_requirements"] == 1
-
     assert len(data["requirements"]) == 1
-
     assert (
         data["requirements"][0]["requirement_id"]
         == "REQ-001"
@@ -270,7 +267,6 @@ def test_extract_requirements_rejects_non_pdf():
     )
 
     assert response.status_code == 400
-
     assert response.json()["detail"] == (
         "Only PDF files are supported."
     )
@@ -293,7 +289,6 @@ def test_extract_requirements_rejects_empty_pdf():
     )
 
     assert response.status_code == 400
-
     assert response.json()["detail"] == (
         "The uploaded PDF is empty."
     )
@@ -308,9 +303,7 @@ def test_analyze_endpoint_returns_complete_analysis():
     """
 
     pdf_bytes = create_valid_pdf()
-
     capability_bytes = create_valid_capability_profile()
-
     expected_result = fake_analysis_result()
 
     class FakeAnalyzer:
@@ -321,13 +314,9 @@ def test_analyze_endpoint_returns_complete_analysis():
             resource_score=50,
         ):
             assert rfp_path.exists()
-
             assert capability_path.exists()
-
             assert rfp_path.suffix == ".pdf"
-
             assert capability_path.suffix == ".json"
-
             assert resource_score == 75
 
             return expected_result
@@ -360,36 +349,27 @@ def test_analyze_endpoint_returns_complete_analysis():
     data = response.json()
 
     assert data["status"] == "success"
-
     assert data["message"] == (
         "RFP analysis completed successfully."
     )
-
     assert data["rfp_filename"] == "test_rfp.pdf"
-
     assert data["capability_filename"] == (
         "secureops_africa.json"
     )
-
     assert data["resource_score"] == 75
-
     assert data["analysis"] == expected_result
-
     assert (
         data["analysis"]["company"]["name"]
         == "SecureOps Africa"
     )
-
     assert (
         data["analysis"]["requirements"]["total"]
         == 2
     )
-
     assert (
         data["analysis"]["compliance"]["gap_count"]
         == 0
     )
-
     assert (
         data["analysis"]["decision"]["decision"]
         == "executive_review"
@@ -421,7 +401,6 @@ def test_analyze_endpoint_rejects_non_pdf_rfp():
     )
 
     assert response.status_code == 400
-
     assert response.json()["detail"] == (
         "The RFP file must be a PDF."
     )
@@ -452,7 +431,6 @@ def test_analyze_endpoint_rejects_non_json_capability():
     )
 
     assert response.status_code == 400
-
     assert response.json()["detail"] == (
         "The capability profile must be a JSON file."
     )
@@ -464,7 +442,6 @@ def test_analyze_endpoint_rejects_invalid_resource_score():
     """
 
     pdf_bytes = create_valid_pdf()
-
     capability_bytes = create_valid_capability_profile()
 
     response = client.post(
@@ -487,7 +464,6 @@ def test_analyze_endpoint_rejects_invalid_resource_score():
     )
 
     assert response.status_code == 400
-
     assert response.json()["detail"] == (
         "resource_score must be between 0 and 100."
     )
@@ -499,7 +475,6 @@ def test_analyze_endpoint_rejects_negative_resource_score():
     """
 
     pdf_bytes = create_valid_pdf()
-
     capability_bytes = create_valid_capability_profile()
 
     response = client.post(
@@ -522,7 +497,6 @@ def test_analyze_endpoint_rejects_negative_resource_score():
     )
 
     assert response.status_code == 400
-
     assert response.json()["detail"] == (
         "resource_score must be between 0 and 100."
     )
@@ -552,7 +526,6 @@ def test_analyze_endpoint_rejects_empty_rfp():
     )
 
     assert response.status_code == 400
-
     assert response.json()["detail"] == (
         "The uploaded RFP PDF is empty."
     )
@@ -582,7 +555,193 @@ def test_analyze_endpoint_rejects_empty_capability_profile():
     )
 
     assert response.status_code == 400
-
     assert response.json()["detail"] == (
         "The capability profile is empty."
     )
+
+
+def test_proposal_workspace_endpoint_creates_bid_workspace(
+    tmp_path,
+):
+    """
+    Verify that the proposal workspace API creates a workspace
+    for a BID decision.
+    """
+
+    workspace_root = tmp_path / "proposal_workspaces"
+
+    with patch(
+        "app.api.routes_proposals.ProposalWorkspaceInitializer",
+        return_value=ProposalWorkspaceInitializer(
+            root_path=workspace_root
+        ),
+    ):
+        response = client.post(
+            "/api/proposals/workspace",
+            json={
+                "opportunity_id": "RFP-2026-001",
+                "decision": "bid",
+                "decision_score": 85.5,
+                "win_probability_score": 78.25,
+                "matched_historical_proposals": [
+                    "PROP-001",
+                    "PROP-003",
+                ],
+                "company_name": "SecureOps Africa",
+            },
+        )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["status"] == "success"
+    assert data["message"] == (
+        "Proposal workspace initialized successfully."
+    )
+
+    workspace = data["workspace"]
+
+    assert workspace["workspace_id"] == "RFP-2026-001"
+    assert workspace["workspace_status"] == "initialized"
+    assert workspace["decision"] == "bid"
+    assert workspace["decision_score"] == 85.5
+    assert workspace["win_probability_score"] == 78.25
+
+    workspace_path = workspace_root / "RFP-2026-001"
+
+    assert workspace_path.exists()
+    assert (workspace_path / "README.md").exists()
+    assert (workspace_path / "decision.json").exists()
+
+    for directory in (
+        "requirements",
+        "compliance",
+        "historical",
+        "pricing",
+        "resources",
+        "proposal",
+    ):
+        assert (workspace_path / directory).is_dir()
+
+
+def test_proposal_workspace_endpoint_rejects_executive_review(
+    tmp_path,
+):
+    """
+    Verify that EXECUTIVE_REVIEW does not create a workspace.
+    """
+
+    workspace_root = tmp_path / "proposal_workspaces"
+
+    with patch(
+        "app.api.routes_proposals.ProposalWorkspaceInitializer",
+        return_value=ProposalWorkspaceInitializer(
+            root_path=workspace_root
+        ),
+    ):
+        response = client.post(
+            "/api/proposals/workspace",
+            json={
+                "opportunity_id": "RFP-2026-002",
+                "decision": "executive_review",
+                "decision_score": 70,
+                "win_probability_score": 65,
+            },
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Proposal workspace creation requires a BID decision."
+    )
+
+    assert not (
+        workspace_root / "RFP-2026-002"
+    ).exists()
+
+
+def test_proposal_workspace_endpoint_rejects_no_bid(
+    tmp_path,
+):
+    """
+    Verify that NO_BID does not create a workspace.
+    """
+
+    workspace_root = tmp_path / "proposal_workspaces"
+
+    with patch(
+        "app.api.routes_proposals.ProposalWorkspaceInitializer",
+        return_value=ProposalWorkspaceInitializer(
+            root_path=workspace_root
+        ),
+    ):
+        response = client.post(
+            "/api/proposals/workspace",
+            json={
+                "opportunity_id": "RFP-2026-003",
+                "decision": "no_bid",
+                "decision_score": 35,
+                "win_probability_score": 30,
+            },
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Proposal workspace creation requires a BID decision."
+    )
+
+    assert not (
+        workspace_root / "RFP-2026-003"
+    ).exists()
+
+
+def test_proposal_workspace_endpoint_rejects_invalid_decision_score():
+    """
+    Verify that the API validates the decision score.
+    """
+
+    response = client.post(
+        "/api/proposals/workspace",
+        json={
+            "opportunity_id": "RFP-2026-004",
+            "decision": "bid",
+            "decision_score": 101,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_proposal_workspace_endpoint_rejects_invalid_win_probability():
+    """
+    Verify that the API validates the win-probability score.
+    """
+
+    response = client.post(
+        "/api/proposals/workspace",
+        json={
+            "opportunity_id": "RFP-2026-005",
+            "decision": "bid",
+            "decision_score": 85,
+            "win_probability_score": -1,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_proposal_workspace_endpoint_rejects_empty_opportunity_id():
+    """
+    Verify that an empty opportunity ID is rejected.
+    """
+
+    response = client.post(
+        "/api/proposals/workspace",
+        json={
+            "opportunity_id": "",
+            "decision": "bid",
+            "decision_score": 85,
+        },
+    )
+
+    assert response.status_code == 422
