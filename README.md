@@ -4,6 +4,13 @@ An end-to-end cybersecurity-focused RFP intelligence and decision-support platfo
 
 The project combines a Python/FastAPI analysis engine with an n8n orchestration workflow and a Google Sheets opportunity register.
 
+## Workflow Preview
+
+The complete n8n workflow orchestrates RFP analysis, Bid / Executive Review / No-Bid routing, management approval, proposal workspace initialization, and opportunity registration.
+
+![Autonomous RFP Intelligence n8n Workflow](screenshots/01-n8n-workflow-overview.png)
+
+
 ---
 
 ## Project Objective
