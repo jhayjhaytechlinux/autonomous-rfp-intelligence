@@ -14,16 +14,19 @@ class DecisionFactor(BaseModel):
         min_length=1,
         description="Name of the decision factor.",
     )
+
     score: float = Field(
         ge=0,
         le=100,
         description="Normalized factor score from 0 to 100.",
     )
+
     weight: float = Field(
         gt=0,
         le=1,
         description="Weight assigned to the factor.",
     )
+
     rationale: str = Field(
         min_length=1,
         description="Explanation supporting the factor score.",
@@ -31,62 +34,76 @@ class DecisionFactor(BaseModel):
 
 
 class DecisionResult(BaseModel):
-    decision: BidDecision = Field(
-        description="Final bid/no-bid decision.",
-    )
+    decision: BidDecision
 
     overall_score: float = Field(
         ge=0,
         le=100,
-        description="Overall weighted decision score.",
     )
 
     compliance_score: float = Field(
         ge=0,
         le=100,
-        description="Compliance score.",
     )
 
     capability_score: float = Field(
         ge=0,
         le=100,
-        description="Capability fit score.",
     )
 
     experience_score: float = Field(
         ge=0,
         le=100,
-        description="Experience fit score.",
     )
 
     resource_score: float = Field(
         ge=0,
         le=100,
-        description="Resource availability score.",
     )
 
     risk_score: float = Field(
         ge=0,
         le=100,
-        description="Risk score where higher means lower risk.",
+    )
+
+    historical_relevance_score: float = Field(
+        ge=0,
+        le=100,
+        default=0,
+        description=(
+            "Score representing the relevance of previous "
+            "successful proposals to the current opportunity."
+        ),
+    )
+
+    win_probability_score: float = Field(
+        ge=0,
+        le=100,
+        default=0,
+        description=(
+            "Evidence-based win-probability score from 0 to 100. "
+            "This is a decision-support score and is not a "
+            "statistically calibrated probability."
+        ),
+    )
+
+    matched_historical_proposals: list[str] = Field(
+        default_factory=list,
+        description="IDs of relevant previous successful proposals.",
     )
 
     mandatory_gaps: list[str] = Field(
         default_factory=list,
-        description="Mandatory requirements without sufficient evidence.",
     )
 
     partial_requirements: list[str] = Field(
         default_factory=list,
-        description="Requirements assessed as partially compliant.",
     )
 
     factors: list[DecisionFactor] = Field(
         default_factory=list,
-        description="Detailed decision factors.",
     )
 
     rationale: str = Field(
         min_length=1,
-        description="Overall explanation of the decision.",
     )

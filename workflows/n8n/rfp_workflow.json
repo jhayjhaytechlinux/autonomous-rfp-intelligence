@@ -272,7 +272,7 @@
         16
       ],
       "id": "ca26861a-4085-4e0b-bc79-5aeeee26882a",
-      "name": "EXECUTIVE REVIEW — Management Approval"
+      "name": "EXECUTIVE REVIEW \u2014 Management Approval"
     },
     {
       "parameters": {
@@ -354,6 +354,24 @@
               "id": "6fa6049b-93b9-4e2e-9f2f-455725ae4114",
               "name": "partial_requirements",
               "value": "={{ $json.analysis.decision.partial_requirements }}",
+              "type": "array"
+            },
+            {
+              "id": "workspace-opportunity_id",
+              "name": "opportunity_id",
+              "value": "={{ $json.rfp_filename.replace(/[^A-Za-z0-9._-]/g, '_') }}",
+              "type": "string"
+            },
+            {
+              "id": "workspace-win_probability_score",
+              "name": "win_probability_score",
+              "value": "={{ $json.analysis.decision.win_probability_score || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "workspace-matched_historical_proposals",
+              "name": "matched_historical_proposals",
+              "value": "={{ $json.analysis.decision.matched_historical_proposals || [] }}",
               "type": "array"
             }
           ]
@@ -555,7 +573,7 @@
             {
               "id": "61a18d7b-0da6-4f9c-834b-644565edd32b",
               "name": "subject",
-              "value": "={{ \"Executive Review Required — \" + $json.rfp_filename }}",
+              "value": "={{ \"Executive Review Required \u2014 \" + $json.rfp_filename }}",
               "type": "string"
             },
             {
@@ -626,7 +644,7 @@
             {
               "id": "a7a3490e-0684-4848-8ebb-bda77eee001c",
               "name": "subject",
-              "value": "={{ \"Proposal Preparation Required — \" + $json.rfp_filename }}",
+              "value": "={{ \"Proposal Preparation Required \u2014 \" + $json.rfp_filename }}",
               "type": "string"
             },
             {
@@ -727,7 +745,7 @@
             {
               "id": "8e65f8aa-0d12-4505-8bed-5abde39ee2de",
               "name": "subject",
-              "value": "={{ \"No-Bid Decision — \" + $json.rfp_filename }}",
+              "value": "={{ \"No-Bid Decision \u2014 \" + $json.rfp_filename }}",
               "type": "string"
             },
             {
@@ -784,6 +802,24 @@
       ],
       "id": "6328adea-adcc-47f9-9a0c-38d269e7e269",
       "name": "Notify Management - No-Bid Decision"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/api/proposals/workspace",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ opportunity_id: $json.opportunity_id, decision: $json.decision, decision_score: $json.overall_score, win_probability_score: $json.win_probability_score, matched_historical_proposals: $json.matched_historical_proposals, company_name: $json.company }) }}",
+        "options": {}
+      },
+      "id": "bid-initialize-proposal-workspace",
+      "name": "BID - Initialize Proposal Workspace",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1180,
+        180
+      ]
     }
   ],
   "pinData": {
@@ -1254,7 +1290,7 @@
         ],
         [
           {
-            "node": "EXECUTIVE REVIEW — Management Approval",
+            "node": "EXECUTIVE REVIEW \u2014 Management Approval",
             "type": "main",
             "index": 0
           }
@@ -1279,7 +1315,7 @@
         ]
       ]
     },
-    "EXECUTIVE REVIEW — Management Approval": {
+    "EXECUTIVE REVIEW \u2014 Management Approval": {
       "main": [
         [
           {
@@ -1294,7 +1330,7 @@
       "main": [
         [
           {
-            "node": "Notify Proposal Team",
+            "node": "BID - Initialize Proposal Workspace",
             "type": "main",
             "index": 0
           }
@@ -1306,6 +1342,17 @@
         [
           {
             "node": "Notify Management - No-Bid Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BID - Initialize Proposal Workspace": {
+      "main": [
+        [
+          {
+            "node": "Notify Proposal Team",
             "type": "main",
             "index": 0
           }

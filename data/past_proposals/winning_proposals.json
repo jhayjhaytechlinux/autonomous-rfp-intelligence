@@ -1,0 +1,88 @@
+{
+  "dataset_name": "SecureOps Africa Controlled Winning Proposal History",
+  "dataset_type": "synthetic_demonstration",
+  "description": "Controlled demonstration records representing previously successful cybersecurity proposal engagements. These records are synthetic and are used only for capstone testing and decision-support modeling.",
+  "company_name": "SecureOps Africa",
+  "proposals": [
+    {
+      "proposal_id": "PROP-001",
+      "title": "Enterprise Security Monitoring and SIEM Implementation",
+      "industry": "Enterprise Services",
+      "services": [
+        "Security Information and Event Management",
+        "Real-Time Security Event Monitoring",
+        "Incident Detection and Alerting",
+        "Security Monitoring Implementation",
+        "Security Reporting and Dashboards"
+      ],
+      "capability_ids": [
+        "CAP-001",
+        "CAP-002",
+        "CAP-003",
+        "CAP-007",
+        "CAP-009"
+      ],
+      "outcome": "won",
+      "relevance_evidence": "Successful proposal closely aligned with enterprise SIEM implementation, continuous security monitoring, incident detection, reporting, and security monitoring solution implementation."
+    },
+    {
+      "proposal_id": "PROP-002",
+      "title": "Enterprise Network Security Monitoring and Incident Response",
+      "industry": "Enterprise Services",
+      "services": [
+        "Network Traffic Analysis",
+        "Incident Detection and Alerting",
+        "Incident Response",
+        "Real-Time Security Event Monitoring",
+        "Security Reporting and Dashboards"
+      ],
+      "capability_ids": [
+        "CAP-002",
+        "CAP-003",
+        "CAP-004",
+        "CAP-007",
+        "CAP-014"
+      ],
+      "outcome": "won",
+      "relevance_evidence": "Successful proposal closely aligned with network traffic analysis, security event monitoring, incident detection, incident response, and operational security reporting."
+    },
+    {
+      "proposal_id": "PROP-003",
+      "title": "Enterprise Security Platform Access Control and Audit Monitoring",
+      "industry": "Enterprise Services",
+      "services": [
+        "Role-Based Access Control",
+        "Security Audit Logging",
+        "Security Information and Event Management",
+        "Security Reporting and Dashboards"
+      ],
+      "capability_ids": [
+        "CAP-001",
+        "CAP-005",
+        "CAP-006",
+        "CAP-007"
+      ],
+      "outcome": "won",
+      "relevance_evidence": "Successful proposal aligned with role-based access control, security audit logging, SIEM capabilities, and security reporting requirements."
+    },
+    {
+      "proposal_id": "PROP-004",
+      "title": "Cybersecurity Operations and Security Awareness Services",
+      "industry": "Enterprise Services",
+      "services": [
+        "Cybersecurity Consulting",
+        "Cybersecurity Training",
+        "Real-Time Security Event Monitoring",
+        "Incident Response"
+      ],
+      "capability_ids": [
+        "CAP-002",
+        "CAP-012",
+        "CAP-013",
+        "CAP-014"
+      ],
+      "outcome": "won",
+      "relevance_evidence": "Successful proposal aligned with cybersecurity consulting, security operations, cybersecurity training, security monitoring, and incident response services."
+    }
+  ]
+}

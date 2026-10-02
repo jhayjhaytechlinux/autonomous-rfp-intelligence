@@ -1,23 +1,17 @@
 from pathlib import Path
-import tempfile
+from tempfile import TemporaryDirectory
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from app.analysis.rfp_analyzer import RFPAnalysisError, RFPAnalyzer
-from app.compliance.capability_loader import (
-    CapabilityProfileLoadError,
-    load_capability_profile,
-)
-from app.extraction.requirement_extractor import (
-    RequirementExtractionError,
-    RequirementExtractor,
-)
+from app.analysis.rfp_analyzer import RFPAnalyzer
+from app.compliance.capability_loader import load_capability_profile
+from app.extraction.requirement_extractor import RequirementExtractor
 from app.ingestion.document_loader import load_document
 
 
 router = APIRouter(
     prefix="/api/analysis",
-    tags=["analysis"],
+    tags=["Analysis"],
 )
 
 
@@ -28,23 +22,13 @@ async def extract_requirements(
     """
     Extract structured requirements from an uploaded RFP PDF.
 
-    Pipeline:
-
-        PDF upload
-            ↓
-        Document ingestion
-            ↓
-        AI requirement extraction
+    The multipart upload field is named `file`.
     """
-
-    # ---------------------------------------------------------
-    # Validate uploaded file
-    # ---------------------------------------------------------
 
     if not file.filename:
         raise HTTPException(
             status_code=400,
-            detail="A file is required.",
+            detail="RFP filename is required.",
         )
 
     if not file.filename.lower().endswith(".pdf"):
@@ -53,86 +37,103 @@ async def extract_requirements(
             detail="Only PDF files are supported.",
         )
 
-    contents = await file.read()
+    file_bytes = await file.read()
 
-    if not contents:
+    if not file_bytes:
         raise HTTPException(
             status_code=400,
             detail="The uploaded PDF is empty.",
         )
 
-    temporary_path: Path | None = None
+    with TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir) / file.filename
+        temp_path.write_bytes(file_bytes)
 
-    try:
-        # -----------------------------------------------------
-        # Create temporary PDF
-        # -----------------------------------------------------
+        try:
+            document = load_document(temp_path)
 
-        with tempfile.NamedTemporaryFile(
-            suffix=".pdf",
-            delete=False,
-        ) as temporary_file:
-            temporary_file.write(contents)
-            temporary_path = Path(
-                temporary_file.name
-            )
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=str(exc),
+            ) from exc
 
-        # -----------------------------------------------------
-        # Load document
-        # -----------------------------------------------------
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=str(exc),
+            ) from exc
 
-        document = load_document(
-            temporary_path
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Document loading failed: {exc}",
+            ) from exc
+
+        try:
+            extractor = RequirementExtractor()
+            result = extractor.extract(document["text"])
+
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=str(exc),
+            ) from exc
+
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=str(exc),
+            ) from exc
+
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Requirement extraction failed: {exc}",
+            ) from exc
+
+    if hasattr(result, "model_dump"):
+        extraction = result.model_dump()
+
+        requirements = extraction.get(
+            "requirements",
+            [],
         )
 
-        # -----------------------------------------------------
-        # Extract requirements
-        # -----------------------------------------------------
-
-        extractor = RequirementExtractor()
-
-        result = extractor.extract(
-            document["text"]
+        total_requirements = extraction.get(
+            "total_requirements",
+            len(requirements),
         )
 
-        # -----------------------------------------------------
-        # Return structured response
-        # -----------------------------------------------------
+    else:
+        requirements = []
 
-        return {
-            "filename": file.filename,
-            "file_type": document["file_type"],
-            "page_count": document["page_count"],
-            "character_count": document["character_count"],
-            "requirements": [
-                requirement.model_dump()
-                for requirement in result.requirements
-            ],
-            "total_requirements": result.total_requirements,
-        }
-
-    except RequirementExtractionError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Requirement extraction failed: {exc}",
-        ) from exc
-
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unable to process RFP: {exc}",
-        ) from exc
-
-    finally:
-        # -----------------------------------------------------
-        # Remove temporary file
-        # -----------------------------------------------------
-
-        if (
-            temporary_path is not None
-            and temporary_path.exists()
+        for requirement in getattr(
+            result,
+            "requirements",
+            [],
         ):
-            temporary_path.unlink()
+            if hasattr(requirement, "model_dump"):
+                requirements.append(
+                    requirement.model_dump()
+                )
+            else:
+                requirements.append(requirement)
+
+        total_requirements = getattr(
+            result,
+            "total_requirements",
+            len(requirements),
+        )
+
+    return {
+        "filename": document["filename"],
+        "file_type": document["file_type"],
+        "page_count": document["page_count"],
+        "character_count": document["character_count"],
+        "total_requirements": total_requirements,
+        "requirements": requirements,
+    }
 
 
 @router.post("/analyze")
@@ -140,38 +141,44 @@ async def analyze_rfp(
     rfp_file: UploadFile = File(...),
     capability_file: UploadFile = File(...),
     resource_score: float = Form(50),
+    project_value: float | None = Form(None),
+    service_category: str | None = Form(None),
 ):
     """
     Run the complete RFP intelligence pipeline.
 
-    Pipeline:
+    Inputs:
+    - RFP PDF
+    - Company capability profile
+    - Optional resource score
+    - Optional project value
+    - Optional service category
 
-        RFP PDF
-            ↓
-        Document ingestion
-            ↓
-        AI requirement extraction
-            ↓
-        Company capability profile
-            ↓
-        Compliance assessment
-            ↓
-        Bid/No-Bid decision
-            ↓
-        Complete JSON analysis
+    The analysis pipeline combines:
+    - RFP document ingestion
+    - Requirement extraction
+    - Capability matching
+    - Compliance analysis
+    - Historical proposal relevance
+    - Team bandwidth analysis
+    - Win-probability scoring
+    - Pricing/commercial analysis
+    - Bid/No-Bid decision support
 
-    This endpoint is the primary integration point
-    for the n8n automation workflow.
+    This endpoint is the primary integration point for
+    orchestration tools such as n8n.
     """
-
-    # ---------------------------------------------------------
-    # Validate RFP
-    # ---------------------------------------------------------
 
     if not rfp_file.filename:
         raise HTTPException(
             status_code=400,
-            detail="An RFP PDF file is required.",
+            detail="RFP filename is required.",
+        )
+
+    if not capability_file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="Capability profile filename is required.",
         )
 
     if not rfp_file.filename.lower().endswith(".pdf"):
@@ -180,177 +187,117 @@ async def analyze_rfp(
             detail="The RFP file must be a PDF.",
         )
 
-    # ---------------------------------------------------------
-    # Validate capability profile
-    # ---------------------------------------------------------
-
-    if not capability_file.filename:
-        raise HTTPException(
-            status_code=400,
-            detail="A capability profile file is required.",
-        )
-
     if not capability_file.filename.lower().endswith(".json"):
         raise HTTPException(
             status_code=400,
             detail="The capability profile must be a JSON file.",
         )
 
-    # ---------------------------------------------------------
-    # Validate resource score
-    # ---------------------------------------------------------
-
-    if resource_score < 0 or resource_score > 100:
+    if not 0 <= resource_score <= 100:
         raise HTTPException(
             status_code=400,
             detail="resource_score must be between 0 and 100.",
         )
 
-    # ---------------------------------------------------------
-    # Read uploaded files
-    # ---------------------------------------------------------
+    if project_value is not None and project_value < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="project_value cannot be negative.",
+        )
 
-    rfp_contents = await rfp_file.read()
+    if service_category is not None:
+        service_category = service_category.strip()
 
-    if not rfp_contents:
+        if not service_category:
+            service_category = None
+
+    rfp_bytes = await rfp_file.read()
+    capability_bytes = await capability_file.read()
+
+    if not rfp_bytes:
         raise HTTPException(
             status_code=400,
             detail="The uploaded RFP PDF is empty.",
         )
 
-    capability_contents = await capability_file.read()
-
-    if not capability_contents:
+    if not capability_bytes:
         raise HTTPException(
             status_code=400,
             detail="The capability profile is empty.",
         )
 
-    rfp_path: Path | None = None
-    capability_path: Path | None = None
+    with TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
 
-    try:
-        # -----------------------------------------------------
-        # Create temporary RFP file
-        # -----------------------------------------------------
+        rfp_path = temp_path / rfp_file.filename
+        capability_path = temp_path / capability_file.filename
 
-        with tempfile.NamedTemporaryFile(
-            suffix=".pdf",
-            delete=False,
-        ) as rfp_temp_file:
-            rfp_temp_file.write(
-                rfp_contents
-            )
+        rfp_path.write_bytes(rfp_bytes)
+        capability_path.write_bytes(capability_bytes)
 
-            rfp_path = Path(
-                rfp_temp_file.name
-            )
+        try:
+            load_capability_profile(capability_path)
 
-        # -----------------------------------------------------
-        # Create temporary capability profile
-        # -----------------------------------------------------
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=str(exc),
+            ) from exc
 
-        with tempfile.NamedTemporaryFile(
-            suffix=".json",
-            delete=False
-        ) as capability_temp_file:
-            capability_temp_file.write(
-                capability_contents
-            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid capability profile: {exc}",
+            ) from exc
 
-            capability_path = Path(
-                capability_temp_file.name
-            )
-
-        # -----------------------------------------------------
-        # Validate capability profile
-        # -----------------------------------------------------
-
-        load_capability_profile(
-            capability_path
-        )
-
-        # -----------------------------------------------------
-        # Run complete RFP analysis
-        # -----------------------------------------------------
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unable to validate capability profile: {exc}",
+            ) from exc
 
         analyzer = RFPAnalyzer()
 
-        result = analyzer.analyze(
-            rfp_path=rfp_path,
-            capability_path=capability_path,
-            resource_score=resource_score,
-        )
-
-        # -----------------------------------------------------
-        # Restore original uploaded filename
-        #
-        # The analyzer sees the temporary file path internally.
-        # The API should expose the user's original filename.
-        # -----------------------------------------------------
-
-        result["rfp"]["filename"] = (
-            rfp_file.filename
-        )
-
-        # -----------------------------------------------------
-        # Return complete analysis
-        # -----------------------------------------------------
-
-        return {
-            "status": "success",
-            "message": (
-                "RFP analysis completed successfully."
-            ),
-            "rfp_filename": rfp_file.filename,
-            "capability_filename": (
-                capability_file.filename
-            ),
+        analysis_kwargs = {
+            "rfp_path": rfp_path,
+            "capability_path": capability_path,
             "resource_score": resource_score,
-            "analysis": result,
         }
 
-    except CapabilityProfileLoadError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"Invalid capability profile: {exc}"
-            ),
-        ) from exc
+        if project_value is not None:
+            analysis_kwargs["project_value"] = project_value
 
-    except RFPAnalysisError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=(
-                f"RFP analysis failed: {exc}"
-            ),
-        ) from exc
+        if service_category is not None:
+            analysis_kwargs["service_category"] = service_category
 
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                f"Unable to analyze RFP: {exc}"
-            ),
-        ) from exc
+        try:
+            result = analyzer.analyze(**analysis_kwargs)
 
-    finally:
-        # -----------------------------------------------------
-        # Remove temporary RFP file
-        # -----------------------------------------------------
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=str(exc),
+            ) from exc
 
-        if (
-            rfp_path is not None
-            and rfp_path.exists()
-        ):
-            rfp_path.unlink()
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=str(exc),
+            ) from exc
 
-        # -----------------------------------------------------
-        # Remove temporary capability profile
-        # -----------------------------------------------------
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"RFP analysis failed: {exc}",
+            ) from exc
 
-        if (
-            capability_path is not None
-            and capability_path.exists()
-        ):
-            capability_path.unlink()
+    return {
+        "status": "success",
+        "message": "RFP analysis completed successfully.",
+        "rfp_filename": rfp_file.filename,
+        "capability_filename": capability_file.filename,
+        "resource_score": resource_score,
+        "project_value": project_value,
+        "service_category": service_category,
+        "analysis": result,
+    }

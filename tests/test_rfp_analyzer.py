@@ -107,10 +107,18 @@ class FakeDecisionEngine:
         compliance_matrix: ComplianceMatrix,
         requirements: list[Requirement],
         resource_score: float = 50,
+        historical_relevance_score: float = 0,
+        matched_historical_proposals: list[str] | None = None,
     ) -> DecisionResult:
         assert compliance_matrix.total_requirements == 2
         assert len(requirements) == 2
         assert resource_score == 75
+
+        assert historical_relevance_score == 50
+        assert matched_historical_proposals == [
+            "PROP-001",
+            "PROP-003",
+        ]
 
         return DecisionResult(
             decision="executive_review",
@@ -120,6 +128,10 @@ class FakeDecisionEngine:
             experience_score=50,
             resource_score=75,
             risk_score=80,
+            historical_relevance_score=historical_relevance_score,
+            matched_historical_proposals=(
+                matched_historical_proposals or []
+            ),
             mandatory_gaps=[],
             partial_requirements=["REQ-002"],
             factors=[],
@@ -233,11 +245,8 @@ def test_rfp_analyzer_runs_complete_pipeline(tmp_path):
     # ---------------------------------------------------------
 
     assert result["rfp"]["filename"] == "test_rfp.pdf"
-
     assert result["rfp"]["file_type"] == "pdf"
-
     assert result["rfp"]["page_count"] == 1
-
     assert result["rfp"]["character_count"] > 0
 
     # ---------------------------------------------------------
@@ -245,7 +254,6 @@ def test_rfp_analyzer_runs_complete_pipeline(tmp_path):
     # ---------------------------------------------------------
 
     assert result["company"]["name"] == "SecureOps Africa"
-
     assert result["company"]["type"] == "Cybersecurity Services Provider"
 
     # ---------------------------------------------------------
@@ -253,7 +261,6 @@ def test_rfp_analyzer_runs_complete_pipeline(tmp_path):
     # ---------------------------------------------------------
 
     assert result["requirements"]["total"] == 2
-
     assert len(result["requirements"]["items"]) == 2
 
     # ---------------------------------------------------------
@@ -261,24 +268,56 @@ def test_rfp_analyzer_runs_complete_pipeline(tmp_path):
     # ---------------------------------------------------------
 
     assert result["compliance"]["total_requirements"] == 2
-
     assert result["compliance"]["compliant_count"] == 1
-
     assert result["compliance"]["partial_count"] == 1
-
     assert result["compliance"]["gap_count"] == 0
-
     assert result["compliance"]["unknown_count"] == 0
+
+    # ---------------------------------------------------------
+    # Historical proposal relevance
+    # ---------------------------------------------------------
+
+    assert (
+        result["historical_proposals"]["dataset_type"]
+        == "synthetic_demonstration"
+    )
+
+    assert (
+        result["historical_proposals"]["total_proposals"]
+        == 4
+    )
+
+    assert (
+        result["historical_proposals"]["matched_proposal_ids"]
+        == [
+            "PROP-001",
+            "PROP-003",
+        ]
+    )
+
+    assert (
+        result["historical_proposals"]["matched_capability_ids"]
+        == ["CAP-001"]
+    )
+
+    assert (
+        result["historical_proposals"]["relevance_score"]
+        == 50
+    )
 
     # ---------------------------------------------------------
     # Decision
     # ---------------------------------------------------------
 
     assert result["decision"]["decision"] == "executive_review"
-
     assert result["decision"]["overall_score"] == 70
-
     assert result["decision"]["resource_score"] == 75
+    assert result["decision"]["historical_relevance_score"] == 50
+
+    assert result["decision"]["matched_historical_proposals"] == [
+        "PROP-001",
+        "PROP-003",
+    ]
 
     assert result["decision"]["partial_requirements"] == ["REQ-002"]
 
@@ -345,11 +384,15 @@ def test_rfp_analyzer_accepts_path_objects(tmp_path):
     )
 
     assert result["company"]["name"] == "SecureOps Africa"
-
     assert result["rfp"]["page_count"] == 1
-
     assert result["rfp"]["file_type"] == "pdf"
-
     assert result["decision"]["decision"] == "executive_review"
-
     assert result["decision"]["overall_score"] == 70
+
+    assert (
+        result["historical_proposals"]["matched_proposal_ids"]
+        == [
+            "PROP-001",
+            "PROP-003",
+        ]
+    )

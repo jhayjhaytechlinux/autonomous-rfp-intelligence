@@ -89,16 +89,27 @@ def test_all_compliant_requirements_produce_high_score():
         matrix,
         requirements,
         resource_score=100,
+        historical_relevance_score=100,
+        matched_historical_proposals=[
+            "PROP-001",
+            "PROP-002",
+        ],
     )
 
     assert result.overall_score == 100
     assert result.compliance_score == 100
     assert result.capability_score == 100
+    assert result.experience_score == 100
+    assert result.historical_relevance_score == 100
     assert result.resource_score == 100
     assert result.risk_score == 100
     assert result.decision == BidDecision.BID
     assert result.mandatory_gaps == []
     assert result.partial_requirements == []
+    assert result.matched_historical_proposals == [
+        "PROP-001",
+        "PROP-002",
+    ]
 
 
 def test_partial_and_gap_requirements_reduce_score():
@@ -124,26 +135,72 @@ def test_partial_and_gap_requirements_reduce_score():
         matrix,
         requirements,
         resource_score=50,
+        historical_relevance_score=0,
     )
 
     assert result.compliance_score == 43.75
     assert result.capability_score == 50
     assert result.experience_score == 100
+    assert result.historical_relevance_score == 0
     assert result.resource_score == 50
     assert result.risk_score == 72.5
 
     # Weighted score:
-    # (43.75 * 0.30)
-    # + (50 * 0.25)
-    # + (100 * 0.20)
-    # + (50 * 0.15)
-    # + (72.5 * 0.10)
-    # = 60.375 -> rounded to 60.38
-    assert result.overall_score == 60.38
+    # (43.75 * 0.25)
+    # + (50 * 0.20)
+    # + (100 * 0.15)
+    # + (0 * 0.15)
+    # + (50 * 0.10)
+    # + (72.5 * 0.15)
+    # = 51.8125 -> rounded to 51.81
+    assert result.overall_score == 51.81
 
-    assert result.decision == BidDecision.EXECUTIVE_REVIEW
+    assert result.decision == BidDecision.NO_BID
     assert "REQ-003" in result.mandatory_gaps
     assert "REQ-002" in result.partial_requirements
+
+
+def test_historical_relevance_contributes_to_overall_score():
+    matrix = make_matrix(
+        [
+            ComplianceStatus.COMPLIANT,
+            ComplianceStatus.COMPLIANT,
+        ]
+    )
+
+    requirements = [
+        make_requirement("REQ-001"),
+        make_requirement("REQ-002"),
+    ]
+
+    engine = DecisionEngine()
+
+    result_without_history = engine.evaluate(
+        matrix,
+        requirements,
+        resource_score=50,
+        historical_relevance_score=0,
+    )
+
+    result_with_history = engine.evaluate(
+        matrix,
+        requirements,
+        resource_score=50,
+        historical_relevance_score=100,
+        matched_historical_proposals=["PROP-001"],
+    )
+
+    assert result_without_history.historical_relevance_score == 0
+    assert result_with_history.historical_relevance_score == 100
+
+    assert (
+        result_with_history.overall_score
+        > result_without_history.overall_score
+    )
+
+    assert result_with_history.matched_historical_proposals == [
+        "PROP-001"
+    ]
 
 
 def test_experience_score_is_based_on_experience_requirements():
@@ -217,8 +274,6 @@ def test_thresholds_control_final_decision():
         make_requirement("REQ-001"),
     ]
 
-    # Normal threshold:
-    # Perfect score should produce BID.
     bid_engine = DecisionEngine(
         bid_threshold=80,
         review_threshold=60,
@@ -228,12 +283,11 @@ def test_thresholds_control_final_decision():
         matrix,
         requirements,
         resource_score=100,
+        historical_relevance_score=100,
     )
 
     assert result.decision == BidDecision.BID
 
-    # Bid threshold of 100 means a score below 100
-    # should fall into EXECUTIVE_REVIEW.
     review_engine = DecisionEngine(
         bid_threshold=100,
         review_threshold=60,
@@ -243,12 +297,11 @@ def test_thresholds_control_final_decision():
         matrix,
         requirements,
         resource_score=50,
+        historical_relevance_score=0,
     )
 
     assert result.decision == BidDecision.EXECUTIVE_REVIEW
 
-    # Both thresholds at 100 means a score below 100
-    # should result in NO_BID.
     no_bid_engine = DecisionEngine(
         bid_threshold=100,
         review_threshold=100,
@@ -258,6 +311,7 @@ def test_thresholds_control_final_decision():
         matrix,
         requirements,
         resource_score=0,
+        historical_relevance_score=0,
     )
 
     assert result.decision == BidDecision.NO_BID
@@ -338,6 +392,44 @@ def test_resource_score_must_be_between_zero_and_one_hundred():
         assert "resource_score" in str(exc)
 
 
+def test_historical_relevance_score_must_be_between_zero_and_one_hundred():
+    matrix = make_matrix(
+        [
+            ComplianceStatus.COMPLIANT,
+        ]
+    )
+
+    requirements = [
+        make_requirement("REQ-001"),
+    ]
+
+    engine = DecisionEngine()
+
+    try:
+        engine.evaluate(
+            matrix,
+            requirements,
+            historical_relevance_score=101,
+        )
+        assert False, (
+            "Expected ValueError for historical relevance > 100"
+        )
+    except ValueError as exc:
+        assert "historical_relevance_score" in str(exc)
+
+    try:
+        engine.evaluate(
+            matrix,
+            requirements,
+            historical_relevance_score=-1,
+        )
+        assert False, (
+            "Expected ValueError for historical relevance < 0"
+        )
+    except ValueError as exc:
+        assert "historical_relevance_score" in str(exc)
+
+
 def test_empty_requirements_are_handled():
     matrix = make_matrix([])
 
@@ -347,22 +439,28 @@ def test_empty_requirements_are_handled():
         matrix,
         [],
         resource_score=50,
+        historical_relevance_score=0,
     )
 
-    # There are no requirements to assess, so the current
-    # decision engine treats compliance, capability fit,
-    # and risk as zero rather than assuming a perfect score.
     assert result.compliance_score == 0
     assert result.capability_score == 0
-
-    # There are no experience requirements, so experience
-    # defaults to 100.
     assert result.experience_score == 100
-
+    assert result.historical_relevance_score == 0
     assert result.resource_score == 50
-    assert result.risk_score == 0
 
-    assert result.overall_score == 27.5
+    # With no gaps, partial requirements, or unknown requirements,
+    # the current risk calculation starts and remains at 100.
+    assert result.risk_score == 100
+
+    # Weighted score:
+    # (0 * 0.25)
+    # + (0 * 0.20)
+    # + (100 * 0.15)
+    # + (0 * 0.15)
+    # + (50 * 0.10)
+    # + (100 * 0.15)
+    # = 35
+    assert result.overall_score == 35
     assert result.decision == BidDecision.NO_BID
 
     assert result.mandatory_gaps == []

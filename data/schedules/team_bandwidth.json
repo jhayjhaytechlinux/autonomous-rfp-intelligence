@@ -1,0 +1,57 @@
+{
+  "dataset_name": "SecureOps Africa Controlled Team Bandwidth Schedule",
+  "dataset_type": "synthetic_demonstration",
+  "description": "Controlled synthetic team capacity data used for capstone testing and decision-support modeling.",
+  "company_name": "SecureOps Africa",
+  "planning_period": "2026-Q4",
+  "teams": [
+    {
+      "team_id": "TEAM-001",
+      "team_name": "Security Operations",
+      "roles": [
+        {
+          "role": "SOC Analyst",
+          "available_hours": 320,
+          "allocated_hours": 240
+        },
+        {
+          "role": "Security Engineer",
+          "available_hours": 280,
+          "allocated_hours": 210
+        }
+      ]
+    },
+    {
+      "team_id": "TEAM-002",
+      "team_name": "Cybersecurity Consulting",
+      "roles": [
+        {
+          "role": "Security Consultant",
+          "available_hours": 200,
+          "allocated_hours": 120
+        },
+        {
+          "role": "Incident Response Specialist",
+          "available_hours": 160,
+          "allocated_hours": 80
+        }
+      ]
+    },
+    {
+      "team_id": "TEAM-003",
+      "team_name": "Implementation and Training",
+      "roles": [
+        {
+          "role": "Implementation Engineer",
+          "available_hours": 240,
+          "allocated_hours": 160
+        },
+        {
+          "role": "Security Trainer",
+          "available_hours": 120,
+          "allocated_hours": 60
+        }
+      ]
+    }
+  ]
+}

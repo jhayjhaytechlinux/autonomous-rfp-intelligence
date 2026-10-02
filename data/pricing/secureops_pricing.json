@@ -1,0 +1,49 @@
+{
+  "dataset_name": "SecureOps Africa Controlled Pricing Model",
+  "dataset_type": "synthetic_demonstration",
+  "description": "Controlled synthetic pricing assumptions used for capstone testing and commercial feasibility analysis.",
+  "company_name": "SecureOps Africa",
+  "currency": "USD",
+  "pricing_models": [
+    {
+      "model_id": "PRICE-001",
+      "name": "Enterprise Security Monitoring",
+      "service_category": "security_monitoring",
+      "base_implementation_cost": 45000,
+      "annual_maintenance_cost": 18000,
+      "training_cost": 5000,
+      "minimum_project_value": 50000,
+      "maximum_project_value": 150000
+    },
+    {
+      "model_id": "PRICE-002",
+      "name": "Enterprise SIEM Implementation",
+      "service_category": "siem",
+      "base_implementation_cost": 60000,
+      "annual_maintenance_cost": 24000,
+      "training_cost": 6000,
+      "minimum_project_value": 70000,
+      "maximum_project_value": 200000
+    },
+    {
+      "model_id": "PRICE-003",
+      "name": "Network Security Monitoring",
+      "service_category": "network_security",
+      "base_implementation_cost": 35000,
+      "annual_maintenance_cost": 15000,
+      "training_cost": 4000,
+      "minimum_project_value": 40000,
+      "maximum_project_value": 120000
+    },
+    {
+      "model_id": "PRICE-004",
+      "name": "Cybersecurity Consulting and Training",
+      "service_category": "consulting_training",
+      "base_implementation_cost": 20000,
+      "annual_maintenance_cost": 5000,
+      "training_cost": 3000,
+      "minimum_project_value": 25000,
+      "maximum_project_value": 80000
+    }
+  ]
+}

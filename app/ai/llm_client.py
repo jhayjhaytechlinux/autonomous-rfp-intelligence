@@ -32,15 +32,25 @@ class LLMClient(ABC):
 
 
 class GeminiClient(LLMClient):
-    """Client for interacting with the Google Gemini API."""
+    """
+    Client for interacting with the Google Gemini API.
+
+    Gemini remains the primary provider because it is significantly
+    faster for this project than the local Ollama fallback.
+
+    If Gemini experiences a temporary service-availability problem,
+    an optional fallback LLM client can be used automatically.
+    """
 
     def __init__(
         self,
         model: str = "gemini-3.1-flash-lite",
         api_key: str | None = None,
+        fallback_client: LLMClient | None = None,
     ):
         self.model = model
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        self.fallback_client = fallback_client
 
         if not self.api_key:
             raise LLMClientError(
@@ -51,14 +61,53 @@ class GeminiClient(LLMClient):
             self.client = genai.Client(
                 api_key=self.api_key
             )
+
         except Exception as exc:
             raise LLMClientError(
                 f"Unable to initialize Gemini client: {exc}"
             ) from exc
 
+    @staticmethod
+    def _is_temporary_provider_error(error: Exception) -> bool:
+        """
+        Determine whether an error looks like a temporary Gemini
+        availability/rate-limit problem where fallback is appropriate.
+
+        We deliberately do not fallback for configuration or programming
+        errors such as an invalid API key.
+        """
+
+        message = str(error).lower()
+
+        temporary_indicators = (
+            "503",
+            "service unavailable",
+            "unavailable",
+            "high demand",
+            "temporarily unavailable",
+            "temporarily overloaded",
+            "429",
+            "resource exhausted",
+            "rate limit",
+            "too many requests",
+            "internal server error",
+            "500",
+            "deadline exceeded",
+            "timeout",
+            "timed out",
+        )
+
+        return any(
+            indicator in message
+            for indicator in temporary_indicators
+        )
+
     def generate(self, prompt: str) -> str:
         """
         Send a prompt to Gemini and return the generated response.
+
+        If Gemini temporarily fails and a fallback client is configured,
+        the request is automatically sent to the fallback provider.
 
         Args:
             prompt: Input prompt.
@@ -67,8 +116,10 @@ class GeminiClient(LLMClient):
             Generated response text.
 
         Raises:
-            ValueError: If the prompt is empty.
-            LLMClientError: If Gemini communication fails.
+            ValueError:
+                If the prompt is empty.
+            LLMClientError:
+                If Gemini fails and fallback is unavailable or also fails.
         """
 
         if not prompt.strip():
@@ -85,9 +136,30 @@ class GeminiClient(LLMClient):
             )
 
         except Exception as exc:
-            raise LLMClientError(
+            gemini_error = LLMClientError(
                 f"Unable to communicate with Gemini: {exc}"
-            ) from exc
+            )
+
+            # Only use Ollama for temporary Gemini availability problems.
+            if (
+                self.fallback_client is not None
+                and self._is_temporary_provider_error(exc)
+            ):
+                try:
+                    print(
+                        "⚠️ Gemini temporarily unavailable. "
+                        "Falling back to Ollama..."
+                    )
+
+                    return self.fallback_client.generate(prompt)
+
+                except Exception as fallback_exc:
+                    raise LLMClientError(
+                        "Gemini was temporarily unavailable and "
+                        f"Ollama fallback also failed: {fallback_exc}"
+                    ) from fallback_exc
+
+            raise gemini_error from exc
 
         generated_text = getattr(
             response,
@@ -127,8 +199,10 @@ class OllamaClient(LLMClient):
             Generated response text.
 
         Raises:
-            ValueError: If the prompt is empty.
-            LLMClientError: If Ollama communication fails.
+            ValueError:
+                If the prompt is empty.
+            LLMClientError:
+                If Ollama communication fails.
         """
 
         if not prompt.strip():
@@ -180,11 +254,36 @@ class OllamaClient(LLMClient):
 
 def create_llm_client() -> LLMClient:
     """
-    Create an LLM client based on AI_PROVIDER.
+    Create the configured LLM client.
 
     Supported providers:
         - gemini
         - ollama
+
+    Gemini is the normal primary provider.
+
+    When AI_PROVIDER=gemini, Ollama is automatically configured as
+    a fallback for temporary Gemini availability problems.
+
+    Environment variables:
+
+        AI_PROVIDER
+            Primary provider. Default: gemini
+
+        AI_MODEL
+            Gemini model. Default: gemini-3.1-flash-lite
+
+        OLLAMA_HOST
+            Ollama server URL.
+            Default: http://127.0.0.1:11434
+
+        OLLAMA_MODEL
+            Ollama fallback model.
+            Default: phi3:mini
+
+        OLLAMA_TIMEOUT
+            Ollama timeout in seconds.
+            Default: 180
     """
 
     provider = os.getenv(
@@ -192,25 +291,51 @@ def create_llm_client() -> LLMClient:
         "gemini",
     ).strip().lower()
 
-    model = os.getenv(
+    gemini_model = os.getenv(
         "AI_MODEL",
         "gemini-3.1-flash-lite",
     ).strip()
 
+    ollama_host = os.getenv(
+        "OLLAMA_HOST",
+        "http://127.0.0.1:11434",
+    ).strip()
+
+    ollama_model = os.getenv(
+        "OLLAMA_MODEL",
+        "phi3:mini",
+    ).strip()
+
+    try:
+        ollama_timeout = float(
+            os.getenv(
+                "OLLAMA_TIMEOUT",
+                "180",
+            )
+        )
+
+    except ValueError as exc:
+        raise ValueError(
+            "OLLAMA_TIMEOUT must be a valid number."
+        ) from exc
+
     if provider == "gemini":
+        fallback_client = OllamaClient(
+            host=ollama_host,
+            model=ollama_model,
+            timeout=ollama_timeout,
+        )
+
         return GeminiClient(
-            model=model,
+            model=gemini_model,
+            fallback_client=fallback_client,
         )
 
     if provider == "ollama":
-        ollama_host = os.getenv(
-            "OLLAMA_HOST",
-            "http://127.0.0.1:11434",
-        )
-
         return OllamaClient(
             host=ollama_host,
-            model=model,
+            model=ollama_model,
+            timeout=ollama_timeout,
         )
 
     raise ValueError(

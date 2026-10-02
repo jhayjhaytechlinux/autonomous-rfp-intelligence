@@ -14,17 +14,26 @@ class DecisionEngine:
     """
     Calculates an explainable weighted Bid/No-Bid decision.
 
-    This first implementation uses the compliance matrix plus explicit
-    resource availability input. Additional evidence sources such as
-    past proposals, pricing models, and team schedules will be added
-    in later phases.
+    The weighted decision model combines:
+
+    - Compliance
+    - Capability fit
+    - Experience fit
+    - Historical proposal relevance
+    - Resource availability
+    - Risk
+
+    Win probability is calculated separately and returned as an
+    explicit decision-support metric. It is not included in the
+    existing overall-score weighting model.
     """
 
-    COMPLIANCE_WEIGHT = 0.30
-    CAPABILITY_WEIGHT = 0.25
-    EXPERIENCE_WEIGHT = 0.20
-    RESOURCE_WEIGHT = 0.15
-    RISK_WEIGHT = 0.10
+    COMPLIANCE_WEIGHT = 0.25
+    CAPABILITY_WEIGHT = 0.20
+    EXPERIENCE_WEIGHT = 0.15
+    HISTORICAL_RELEVANCE_WEIGHT = 0.15
+    RESOURCE_WEIGHT = 0.10
+    RISK_WEIGHT = 0.15
 
     def __init__(
         self,
@@ -32,10 +41,14 @@ class DecisionEngine:
         review_threshold: float = 60,
     ):
         if not 0 <= review_threshold <= 100:
-            raise ValueError("review_threshold must be between 0 and 100.")
+            raise ValueError(
+                "review_threshold must be between 0 and 100."
+            )
 
         if not 0 <= bid_threshold <= 100:
-            raise ValueError("bid_threshold must be between 0 and 100.")
+            raise ValueError(
+                "bid_threshold must be between 0 and 100."
+            )
 
         if review_threshold > bid_threshold:
             raise ValueError(
@@ -50,14 +63,32 @@ class DecisionEngine:
         compliance_matrix: ComplianceMatrix,
         requirements: list[Requirement],
         resource_score: float = 50,
+        historical_relevance_score: float = 0,
+        matched_historical_proposals: list[str] | None = None,
+        win_probability_score: float = 0,
     ) -> DecisionResult:
         """
         Calculate the overall Bid/No-Bid decision.
+
+        The existing weighted decision model remains unchanged.
+
+        Win probability is an additional evidence-based metric
+        calculated separately from the weighted overall score.
         """
 
         if not 0 <= resource_score <= 100:
             raise ValueError(
                 "resource_score must be between 0 and 100."
+            )
+
+        if not 0 <= historical_relevance_score <= 100:
+            raise ValueError(
+                "historical_relevance_score must be between 0 and 100."
+            )
+
+        if not 0 <= win_probability_score <= 100:
+            raise ValueError(
+                "win_probability_score must be between 0 and 100."
             )
 
         compliance_score = self._calculate_compliance_score(
@@ -81,11 +112,15 @@ class DecisionEngine:
             compliance_score * self.COMPLIANCE_WEIGHT
             + capability_score * self.CAPABILITY_WEIGHT
             + experience_score * self.EXPERIENCE_WEIGHT
+            + historical_relevance_score
+            * self.HISTORICAL_RELEVANCE_WEIGHT
             + resource_score * self.RESOURCE_WEIGHT
             + risk_score * self.RISK_WEIGHT
         )
 
-        decision = self._determine_decision(overall_score)
+        decision = self._determine_decision(
+            overall_score
+        )
 
         mandatory_gaps = [
             result.requirement_id
@@ -113,8 +148,8 @@ class DecisionEngine:
                 score=capability_score,
                 weight=self.CAPABILITY_WEIGHT,
                 rationale=(
-                    "Measures the proportion of requirements supported "
-                    "by documented company capabilities."
+                    "Measures the proportion of requirements "
+                    "supported by documented company capabilities."
                 ),
             ),
             DecisionFactor(
@@ -122,8 +157,17 @@ class DecisionEngine:
                 score=experience_score,
                 weight=self.EXPERIENCE_WEIGHT,
                 rationale=(
-                    "Measures evidence available for experience-related "
-                    "requirements."
+                    "Measures evidence available for "
+                    "experience-related requirements."
+                ),
+            ),
+            DecisionFactor(
+                name="Historical Proposal Relevance",
+                score=historical_relevance_score,
+                weight=self.HISTORICAL_RELEVANCE_WEIGHT,
+                rationale=(
+                    "Measures how strongly previous successful "
+                    "proposals relate to the current opportunity."
                 ),
             ),
             DecisionFactor(
@@ -131,8 +175,8 @@ class DecisionEngine:
                 score=resource_score,
                 weight=self.RESOURCE_WEIGHT,
                 rationale=(
-                    "Current resource availability input. This will "
-                    "later be calculated from team bandwidth data."
+                    "Measures current resource availability "
+                    "based on the configured resource input."
                 ),
             ),
             DecisionFactor(
@@ -140,8 +184,9 @@ class DecisionEngine:
                 score=risk_score,
                 weight=self.RISK_WEIGHT,
                 rationale=(
-                    "Higher scores indicate lower compliance-related "
-                    "risk from gaps and partial requirements."
+                    "Higher scores indicate lower "
+                    "compliance-related risk from gaps "
+                    "and partial requirements."
                 ),
             ),
         ]
@@ -150,16 +195,52 @@ class DecisionEngine:
             decision=decision,
             overall_score=overall_score,
             compliance_matrix=compliance_matrix,
+            historical_relevance_score=(
+                historical_relevance_score
+            ),
+            matched_historical_proposals=(
+                matched_historical_proposals or []
+            ),
+            win_probability_score=win_probability_score,
         )
 
         return DecisionResult(
             decision=decision,
-            overall_score=round(overall_score, 2),
-            compliance_score=round(compliance_score, 2),
-            capability_score=round(capability_score, 2),
-            experience_score=round(experience_score, 2),
-            resource_score=round(resource_score, 2),
-            risk_score=round(risk_score, 2),
+            overall_score=round(
+                overall_score,
+                2,
+            ),
+            compliance_score=round(
+                compliance_score,
+                2,
+            ),
+            capability_score=round(
+                capability_score,
+                2,
+            ),
+            experience_score=round(
+                experience_score,
+                2,
+            ),
+            resource_score=round(
+                resource_score,
+                2,
+            ),
+            risk_score=round(
+                risk_score,
+                2,
+            ),
+            historical_relevance_score=round(
+                historical_relevance_score,
+                2,
+            ),
+            win_probability_score=round(
+                win_probability_score,
+                2,
+            ),
+            matched_historical_proposals=(
+                matched_historical_proposals or []
+            ),
             mandatory_gaps=mandatory_gaps,
             partial_requirements=partial_requirements,
             factors=factors,
@@ -170,15 +251,6 @@ class DecisionEngine:
     def _calculate_compliance_score(
         matrix: ComplianceMatrix,
     ) -> float:
-        """
-        Calculate compliance using weighted status values.
-
-        COMPLIANT = 100
-        PARTIAL   = 50
-        GAP       = 0
-        UNKNOWN   = 25
-        """
-
         if matrix.total_requirements == 0:
             return 0.0
 
@@ -194,17 +266,12 @@ class DecisionEngine:
             for result in matrix.results
         )
 
-        return (total / matrix.total_requirements)
+        return total / matrix.total_requirements
 
     @staticmethod
     def _calculate_capability_score(
         matrix: ComplianceMatrix,
     ) -> float:
-        """
-        Calculate capability fit from requirements with documented
-        capability matches.
-        """
-
         if matrix.total_requirements == 0:
             return 0.0
 
@@ -223,10 +290,6 @@ class DecisionEngine:
         matrix: ComplianceMatrix,
         requirements: list[Requirement],
     ) -> float:
-        """
-        Calculate experience fit from experience-related requirements.
-        """
-
         experience_requirement_ids = {
             requirement.requirement_id
             for requirement in requirements
@@ -239,7 +302,9 @@ class DecisionEngine:
         scores = []
 
         for result in matrix.results:
-            if result.requirement_id not in experience_requirement_ids:
+            if result.requirement_id not in (
+                experience_requirement_ids
+            ):
                 continue
 
             if result.status == ComplianceStatus.COMPLIANT:
@@ -260,33 +325,24 @@ class DecisionEngine:
     def _calculate_risk_score(
         matrix: ComplianceMatrix,
     ) -> float:
-        """
-        Calculate a risk score where higher means lower risk.
+        score = 100.0
 
-        Each mandatory gap has a larger negative effect than a partial
-        requirement.
-        """
+        score -= matrix.gap_count * 15
+        score -= matrix.partial_count * 7.5
+        score -= matrix.unknown_count * 5
 
-        if matrix.total_requirements == 0:
-            return 0.0
-
-        gap_penalty = matrix.gap_count * 15
-        partial_penalty = matrix.partial_count * 7.5
-        unknown_penalty = matrix.unknown_count * 5
-
-        risk_score = 100 - (
-            gap_penalty
-            + partial_penalty
-            + unknown_penalty
+        return max(
+            0.0,
+            min(
+                100.0,
+                score,
+            ),
         )
-
-        return max(0.0, min(100.0, risk_score))
 
     def _determine_decision(
         self,
         overall_score: float,
     ) -> BidDecision:
-
         if overall_score >= self.bid_threshold:
             return BidDecision.BID
 
@@ -303,8 +359,7 @@ class DecisionEngine:
             f"{matrix.compliant_count} compliant, "
             f"{matrix.partial_count} partial, "
             f"{matrix.gap_count} gaps, and "
-            f"{matrix.unknown_count} unknown requirements "
-            f"out of {matrix.total_requirements}."
+            f"{matrix.unknown_count} unknown requirements."
         )
 
     @staticmethod
@@ -312,13 +367,28 @@ class DecisionEngine:
         decision: BidDecision,
         overall_score: float,
         compliance_matrix: ComplianceMatrix,
+        historical_relevance_score: float,
+        matched_historical_proposals: list[str],
+        win_probability_score: float,
     ) -> str:
+        historical_proposal_text = (
+            ", ".join(
+                matched_historical_proposals
+            )
+            if matched_historical_proposals
+            else "none"
+        )
 
         return (
-            f"The calculated decision is "
-            f"{decision.value.upper()} with an overall score of "
-            f"{overall_score:.2f}/100. "
-            f"The compliance assessment identified "
-            f"{compliance_matrix.gap_count} gaps and "
-            f"{compliance_matrix.partial_count} partial requirements."
+            f"Decision is {decision.value} with an overall score "
+            f"of {overall_score:.2f}. The compliance assessment "
+            f"found {compliance_matrix.compliant_count} compliant, "
+            f"{compliance_matrix.partial_count} partial, "
+            f"{compliance_matrix.gap_count} gap, and "
+            f"{compliance_matrix.unknown_count} unknown "
+            f"requirements. Historical proposal relevance is "
+            f"{historical_relevance_score:.2f}, supported by "
+            f"previous proposals: {historical_proposal_text}. "
+            f"Evidence-based win-probability score is "
+            f"{win_probability_score:.2f}."
         )
